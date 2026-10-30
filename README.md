@@ -83,7 +83,8 @@ src/main/java/io/github/dukkkkkkkk/pitch40/
 
 ## Credits
 
-The rocket logic is ported from the Pitch40 module in [BepHax](https://github.com/dekrom/BepHaxAddon), a Meteor Client addon. The plugin structure comes from the [ZenithProxy example plugin](https://github.com/rfresh2/ZenithProxyExamplePlugin).
+The plugin structure comes from the [ZenithProxy example plugin](https://github.com/rfresh2/ZenithProxyExamplePlugin).
+tehpicix for helping with the chestfly
 
 ## License
 
