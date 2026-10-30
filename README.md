@@ -85,7 +85,3 @@ src/main/java/io/github/dukkkkkkkk/pitch40/
 
 The plugin structure comes from the [ZenithProxy example plugin](https://github.com/rfresh2/ZenithProxyExamplePlugin).
 tehpicix for helping with the chestfly
-
-## License
-
-[GPL-3.0](LICENSE), matching BepHax, which this is derived from.
