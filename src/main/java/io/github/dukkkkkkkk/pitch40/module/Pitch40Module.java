@@ -2,6 +2,7 @@ package io.github.dukkkkkkkk.pitch40.module;
 
 import com.github.rfresh2.EventConsumer;
 import com.zenith.event.client.ClientBotTick;
+import com.zenith.event.module.AutoReconnectDecisionEvent;
 import com.zenith.feature.player.ClickResult;
 import com.zenith.feature.player.ClickTarget;
 import com.zenith.feature.player.Input;
@@ -57,6 +58,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     private final RocketTracker rockets = new RocketTracker();
     private final ElytraManager elytra = new ElytraManager(this);
     private final ChestSwap chestSwap;
+    private final AutoLog autoLog = new AutoLog(this);
 
     /** A Pitch40 cycle is running. Cleared on landing, dimension change, or disable. */
     private boolean flying = false;
@@ -103,7 +105,8 @@ public class Pitch40Module extends AbstractInventoryModule {
         return List.of(
             of(ClientBotTick.class, this::onTick),
             of(ClientBotTick.Starting.class, e -> reset()),
-            of(ClientBotTick.Stopped.class, e -> reset())
+            of(ClientBotTick.Stopped.class, e -> reset()),
+            of(AutoReconnectDecisionEvent.class, autoLog::onAutoReconnectDecision)
         );
     }
 
@@ -138,6 +141,10 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         if (BOT.isOnGround()) {
             if (flying) info("Landed, Pitch40 stopped");
+            endFlight();
+            return;
+        }
+        if (flying && autoLog.tick()) {
             endFlight();
             return;
         }

@@ -13,6 +13,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
 - **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low
 - **Auto deploy**: reopens the elytra if the glide drops out mid-air
+- **Auto log**: disconnects if a flight sinks too far under the lower height, and stops AutoReconnect logging back in
 
 ## Installing
 
@@ -28,7 +29,7 @@ Requires the `java` ZenithProxy release channel (plugins aren't supported on `li
 2. Run `pitch40 on`
 3. Disconnect. The bot only flies while no player is controlling the proxy
 
-It pauses while ZenithProxy's own pathfinder is active, and stops when it lands.
+It pauses while ZenithProxy's own pathfinder is active, stops when it lands, and disconnects if it sinks too far under the lower height (see `autoLog`).
 
 ## Commands
 
@@ -50,6 +51,9 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |
+| `pitch40 autoLog on/off` | on | Disconnects if the bot sinks too far under the lower height mid-flight |
+| `pitch40 autoLog below <blocks>` | 40 | How far under the lower height it can sink first. With bounds 360-420 that's Y 320. The emergency rockets fire at 10 and 30 under, so they get a chance first |
+| `pitch40 autoLog cancelReconnect on/off` | on | Stops AutoReconnect logging straight back in afterwards |
 | `pitch40 priority <n>` | 7500 | Input priority. Beats AntiAFK; KillAura and AutoEat still win |
 
 Run `pitch40` on its own to see the current settings and what the bot is doing.
@@ -75,7 +79,8 @@ src/main/java/io/github/dukkkkkkkk/pitch40/
 │   ├── GlideCycle.java      tracks climbs and decides when a rocket is due
 │   ├── RocketTracker.java   waits for a fired rocket to show up before allowing another
 │   ├── ElytraManager.java   durability checks and spare elytra replacement
-│   └── ChestSwap.java       the chest swap packets
+│   ├── ChestSwap.java       the chest swap packets
+│   └── AutoLog.java         disconnects if a flight sinks too low
 └── util/
     ├── Items.java           item checks and inventory slot lookups
     └── Notice.java          show-once warnings

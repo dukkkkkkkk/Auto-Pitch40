@@ -43,6 +43,8 @@ public class Pitch40Command extends Command {
 
                 Chest swap keeps elytra durability loss near zero by swapping a hotbar chestplate on and off.
 
+                Auto log disconnects if a flight sinks too far under the lower bound.
+
                 Only runs while no player is controlling the proxy, and pauses while the pathfinder is active.
                 """)
             .usageLines(
@@ -60,6 +62,9 @@ public class Pitch40Command extends Command {
                 "chestSwap on/off",
                 "chestSwap interval <ticks>",
                 "chestSwap slot <hotbar slot 0-8>",
+                "autoLog on/off",
+                "autoLog below <blocks under the lower bound>",
+                "autoLog cancelReconnect on/off",
                 "priority <priority>"
             )
             .build();
@@ -95,6 +100,7 @@ public class Pitch40Command extends Command {
             .then(rocketCommands())
             .then(elytraCommands())
             .then(chestSwapCommands())
+            .then(autoLogCommands())
             .then(literal("priority").then(argument("priority", integer()).executes(c -> {
                 CONFIG.priority = getInteger(c, "priority");
                 c.getSource().getEmbed()
@@ -192,6 +198,26 @@ public class Pitch40Command extends Command {
             })));
     }
 
+    private LiteralArgumentBuilder<CommandContext> autoLogCommands() {
+        return literal("autoLog")
+            .then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.autoLog.enabled = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Auto Log " + toggleStrCaps(CONFIG.autoLog.enabled));
+            }))
+            .then(literal("below").then(argument("blocks", doubleArg(0, 500)).executes(c -> {
+                CONFIG.autoLog.blocksBelowLowerBound = getDouble(c, "blocks");
+                c.getSource().getEmbed()
+                    .title("Auto Log Height Set")
+                    .description("Disconnects under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound));
+            })))
+            .then(literal("cancelReconnect").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.autoLog.cancelReconnect = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Cancel Reconnect " + toggleStrCaps(CONFIG.autoLog.cancelReconnect));
+            })));
+    }
+
     @Override
     public void defaultEmbed(Embed embed) {
         var module = MODULE.get(Pitch40Module.class);
@@ -216,6 +242,10 @@ public class Pitch40Command extends Command {
             .addField("Durability Warning", elytra.lowDurabilityWarning)
             .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | every " + chestSwap.intervalTicks
                 + " ticks | slot " + module.chestplateHotbarSlot())
+            .addField("Auto Log", toggleStr(CONFIG.autoLog.enabled)
+                + " | under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound)
+                + " (" + CONFIG.autoLog.blocksBelowLowerBound + " below the lower bound)"
+                + (CONFIG.autoLog.cancelReconnect ? " | no reconnect" : ""))
             .addField("Priority", CONFIG.priority);
     }
 }

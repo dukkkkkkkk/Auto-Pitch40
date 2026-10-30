@@ -16,6 +16,7 @@ public class Pitch40Config {
     public final Rockets rockets = new Rockets();
     public final Elytra elytra = new Elytra();
     public final ChestSwap chestSwap = new ChestSwap();
+    public final AutoLog autoLog = new AutoLog();
 
     public static final class Corridor {
         /** Below this Y the bot pitches up to climb. */
@@ -66,5 +67,17 @@ public class Pitch40Config {
         public int intervalTicks = 4;
         /** Hotbar slot (0-8) a chestplate is moved into if none is in the hotbar. Never the rocket slot. */
         public int hotbarSlot = 7;
+    }
+
+    public static final class AutoLog {
+        /** Disconnect when a flight sinks too far under the corridor. */
+        public boolean enabled = true;
+        /**
+         * How far under the lower bound the bot may sink before disconnecting.
+         * The default leaves room for the emergency rockets (10 and 30 under) to recover first.
+         */
+        public double blocksBelowLowerBound = 40.0;
+        /** Stop AutoReconnect from logging straight back in afterwards. */
+        public boolean cancelReconnect = true;
     }
 }
