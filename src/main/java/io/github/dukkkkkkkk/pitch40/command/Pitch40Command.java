@@ -55,7 +55,8 @@ public class Pitch40Command extends Command {
                 Auto log disconnects if a flight sinks too far under the lower bound.
 
                 Coords posts the bot's position to Discord and the terminal every intervalHours (default 24).
-                Whisper the bot "eta" or "current" and it whispers its position back (whitelisted players only).
+                Whisper the bot "eta" or "current" (or say it in public chat) and it whispers its position back.
+                Whitelisted players only.
 
                 Only runs while no player is controlling the proxy, and pauses while the pathfinder is active.
                 """)
@@ -86,6 +87,8 @@ public class Pitch40Command extends Command {
                 "whisper on/off",
                 "whisper add <keyword>",
                 "whisper remove <keyword>",
+                "whisper publicChat on/off",
+                "whisper antiSpam on/off",
                 "priority <priority>"
             )
             .build();
@@ -323,6 +326,17 @@ public class Pitch40Command extends Command {
                     .title("Keyword Added")
                     .description("Keywords: " + String.join(", ", CONFIG.whisperReply.keywords));
             })))
+            .then(literal("publicChat").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.whisperReply.publicChat = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Public Chat Trigger " + toggleStrCaps(CONFIG.whisperReply.publicChat))
+                    .description("Replies are always whispered");
+            })))
+            .then(literal("antiSpam").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.whisperReply.antiSpam = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Anti Spam " + toggleStrCaps(CONFIG.whisperReply.antiSpam));
+            })))
             .then(literal("remove").then(argument("keyword", word()).executes(c -> {
                 String keyword = getString(c, "keyword").toLowerCase(Locale.ROOT);
                 CONFIG.whisperReply.keywords.removeIf(k -> k.equalsIgnoreCase(keyword));
@@ -377,6 +391,8 @@ public class Pitch40Command extends Command {
                     : ""))
             .addField("Whisper Reply", toggleStr(CONFIG.whisperReply.enabled) + " | keywords: "
                 + (CONFIG.whisperReply.keywords.isEmpty() ? "none" : String.join(", ", CONFIG.whisperReply.keywords))
+                + (CONFIG.whisperReply.publicChat ? " | whisper or public chat" : " | whisper only")
+                + (CONFIG.whisperReply.antiSpam ? " | anti spam" : "")
                 + " | whitelisted players only")
             .addField("Priority", CONFIG.priority);
     }

@@ -111,5 +111,9 @@ public class Pitch40Config {
         public boolean enabled = true;
         /** Whole-message matches, not case sensitive. */
         public List<String> keywords = new ArrayList<>(List.of("eta", "current"));
+        /** Also answer a keyword said in public chat. The answer is still a whisper. */
+        public boolean publicChat = true;
+        /** Add a random [xxxxx] tag so the server's duplicate-message filter doesn't drop repeat replies. */
+        public boolean antiSpam = true;
     }
 }

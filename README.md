@@ -16,7 +16,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
 - **Auto deploy**: reopens the elytra if the glide drops out mid-air
 - **Auto log**: disconnects if a flight sinks too far under the lower height, and stops AutoReconnect logging back in
 - **Daily coords**: posts the bot's position, dimension and distance travelled to Discord (and the terminal) every 24 hours
-- **Whisper for coords**: whisper the bot `eta` or `current` in game and it whispers back its position, speed and flight state. Only whitelisted players get an answer
+- **Ask for coords**: whisper the bot `eta` or `current`, or just say it in public chat, and it whispers back its position, speed and flight state. Only whitelisted players get an answer, and it's always a whisper
 
 ## Installing
 
@@ -66,6 +66,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 whisper on/off` | on | Whispers the position back when a whitelisted player whispers a keyword |
 | `pitch40 whisper add <keyword>` | eta, current | Adds a keyword. The whole whisper has to be the keyword, in any case |
 | `pitch40 whisper remove <keyword>` | | Removes a keyword |
+| `pitch40 whisper publicChat on/off` | on | Also answers a keyword said in public chat. The reply is still a whisper |
+| `pitch40 whisper antiSpam on/off` | on | Adds a random tag like `[s2o9f]` to each reply so the server's spam filter doesn't drop repeats |
 | `pitch40 priority <n>` | 7500 | Input priority. Beats AntiAFK; KillAura and AutoEat still win |
 
 Run `pitch40` on its own to see the current settings and what the bot is doing.
@@ -81,7 +83,7 @@ The lower height still works as a floor: it always climbs there, and the emergen
 
 The coords report is timed from the last one sent, and that time is saved, so restarts don't reset it. If the proxy was offline when one was due, it goes out as soon as it's back in game. If ZenithProxy's `discord reportCoords` setting is off, the coordinates only go to the terminal.
 
-Whisper replies only go to players on ZenithProxy's whitelist (`whitelist add <name>`), matched by UUID, since they can already log into the proxy and see where it is. Anyone else is ignored and logged to the terminal. Each player can get one reply every 5 seconds.
+Replies only go to players on ZenithProxy's whitelist (`whitelist add <name>`), matched by UUID, since they can already log into the proxy and see where it is. Anyone else is ignored (whispers from them are logged to the terminal). Replies are always whispers, even when the keyword was said in public chat, so the coords never go to public chat. Each player can get one reply every 5 seconds.
 
 Settings are saved in `plugins/config/pitch40.json`. Stop ZenithProxy before editing the file by hand. The rocket hotbar slot (`rockets.hotbarSlot`, default 8) can only be changed there, and only takes effect after a restart.
 

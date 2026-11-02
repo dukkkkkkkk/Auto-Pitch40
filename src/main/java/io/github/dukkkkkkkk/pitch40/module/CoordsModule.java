@@ -2,12 +2,15 @@ package io.github.dukkkkkkkk.pitch40.module;
 
 import com.github.rfresh2.EventConsumer;
 import com.zenith.discord.Embed;
+import com.zenith.event.chat.PublicChatEvent;
 import com.zenith.event.chat.WhisperChatEvent;
 import com.zenith.event.client.ClientTickEvent;
 import com.zenith.module.api.Module;
 import com.zenith.util.ChatUtil;
 import com.zenith.util.timer.Timer;
 import com.zenith.util.timer.Timers;
+import org.geysermc.mcprotocollib.protocol.data.game.PlayerListEntry;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static com.github.rfresh2.EventConsumer.of;
 import static com.zenith.Globals.*;
@@ -29,9 +33,10 @@ import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
  *   <li><b>Report:</b> posts the coordinates to Discord (and the terminal) every {@code intervalHours}. The last report
  *       time is saved in the config, so restarts don't reset the timer, and a report that came due while offline
  *       goes out as soon as the bot is back in game. Respects ZenithProxy's {@code discord reportCoords} setting.</li>
- *   <li><b>Whisper reply:</b> whisper the bot one of the keywords (default "eta" or "current") and it whispers back
- *       its position, speed and Pitch40 state. Only players on ZenithProxy's whitelist get an answer, since they can
- *       already log into the proxy and see where it is.</li>
+ *   <li><b>Whisper reply:</b> whisper the bot one of the keywords (default "eta" or "current"), or say it in public
+ *       chat, and it whispers back its position, speed and Pitch40 state, with a random [xxxxx] tag so the server's
+ *       spam filter doesn't drop repeats. Only players on ZenithProxy's whitelist get an answer, since they can
+ *       already log into the proxy and see where it is. The answer is always a whisper, never public chat.</li>
  * </ul>
  */
 public class CoordsModule extends Module {
@@ -40,6 +45,8 @@ public class CoordsModule extends Module {
     private static final int SPEED_SAMPLES = 5;
     /** Per player, so a burst of whispers can't get the bot kicked for chat spam. */
     private static final Duration WHISPER_COOLDOWN = Duration.ofSeconds(5);
+    private static final int ANTI_SPAM_LENGTH = 5;
+    private static final String ANTI_SPAM_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
     private final Timer checkTimer = Timers.tickTimer();
     private final ArrayDeque<double[]> recentPositions = new ArrayDeque<>();
@@ -57,7 +64,8 @@ public class CoordsModule extends Module {
             // ClientTickEvent runs whenever the bot is in game, whether or not a player is connected
             of(ClientTickEvent.class, this::onTick),
             of(ClientTickEvent.Starting.class, e -> clearPositions()),
-            of(WhisperChatEvent.class, this::onWhisper)
+            of(WhisperChatEvent.class, this::onWhisper),
+            of(PublicChatEvent.class, this::onPublicChat)
         );
     }
 
@@ -124,12 +132,28 @@ public class CoordsModule extends Module {
     // ---- whisper reply ----
 
     private void onWhisper(WhisperChatEvent event) {
-        if (!CONFIG.whisperReply.enabled || event.outgoing()) return;
-        var sender = event.sender();
-        if (sender == null || sender.getProfileId() == null) return;
-        if (!isKeyword(event.message())) return;
+        if (event.outgoing()) return;
+        onKeywordRequest(event.sender(), event.message(), false);
+    }
+
+    private void onPublicChat(PublicChatEvent event) {
+        if (!CONFIG.whisperReply.publicChat) return;
+        onKeywordRequest(event.sender(), event.message(), true);
+    }
+
+    /**
+     * A whitelisted player sent a keyword, by whisper or in public chat. The answer is always a whisper,
+     * so the coordinates never go to public chat.
+     */
+    private void onKeywordRequest(@Nullable PlayerListEntry sender, @Nullable String message, boolean publicChat) {
+        if (!CONFIG.whisperReply.enabled) return;
+        if (sender == null || sender.getProfileId() == null || sender.getName() == null) return;
+        if (!isKeyword(message)) return;
+        // never answer our own messages
+        if (sender.getName().equalsIgnoreCase(com.zenith.Globals.CONFIG.authentication.username)) return;
         if (!PLAYER_LISTS.getWhitelist().contains(sender.getProfileId())) {
-            info("Ignoring \"{}\" from {}: not on the whitelist", event.message().trim(), sender.getName());
+            // anyone can say "eta" in public chat, so only log the whispers
+            if (!publicChat) info("Ignoring \"{}\" from {}: not on the whitelist", message.trim(), sender.getName());
             return;
         }
         var now = Instant.now();
@@ -138,8 +162,22 @@ public class CoordsModule extends Module {
         lastWhisperReply.put(sender.getProfileId(), now);
 
         String reply = whisperReply();
+        if (CONFIG.whisperReply.antiSpam) reply += " [" + antiSpamTag() + "]";
         sendClientPacketAsync(ChatUtil.getWhisperChatPacket(sender.getName(), reply));
-        info("Sent position to {}", sender.getName());
+        info("Whispered position to {} ({})", sender.getName(), publicChat ? "asked in public chat" : "asked by whisper");
+    }
+
+    /**
+     * Random 5 characters, so repeated replies are never identical and the server's duplicate-message
+     * spam filter doesn't drop them.
+     */
+    private static String antiSpamTag() {
+        var random = ThreadLocalRandom.current();
+        var tag = new StringBuilder(ANTI_SPAM_LENGTH);
+        for (int i = 0; i < ANTI_SPAM_LENGTH; i++) {
+            tag.append(ANTI_SPAM_CHARS.charAt(random.nextInt(ANTI_SPAM_CHARS.length())));
+        }
+        return tag.toString();
     }
 
     private static boolean isKeyword(String message) {
