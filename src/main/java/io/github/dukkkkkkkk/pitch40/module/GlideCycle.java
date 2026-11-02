@@ -6,15 +6,21 @@ import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
  * Follows the climb/dive cycle and decides when the next climb should spend a rocket.
  *
  * <p>After each climb tops out, a rocket is wanted if the peak fell more than {@code tolerance}
- * under the upper bound (KEEP and BOOST), or if it is a boost turn (BOOST, every Nth climb).
+ * under the target height (KEEP and BOOST), or if it is a boost turn (BOOST, every Nth climb).
+ * The target is the upper bound, or with no ceiling the highest peak reached so far this flight.
  */
 final class GlideCycle {
     static final double VELOCITY_DEADBAND = 0.02;
+    /** Pass as the ceiling to measure climbs against the best peak instead of a fixed height. */
+    static final double NO_CEILING = Double.NaN;
 
     private boolean started;
     private boolean goingUp;
+    private boolean toppedOut;
     private int climbs;
     private double peakY;
+    private double lastPeakY = Double.NaN;
+    private double bestPeakY = Double.NaN;
 
     boolean needsRocket;
     boolean rocketForBoost;
@@ -22,8 +28,11 @@ final class GlideCycle {
     void reset() {
         started = false;
         goingUp = false;
+        toppedOut = false;
         climbs = 0;
         peakY = 0.0;
+        lastPeakY = Double.NaN;
+        bestPeakY = Double.NaN;
         needsRocket = false;
         rocketForBoost = false;
     }
@@ -32,9 +41,30 @@ final class GlideCycle {
         return goingUp;
     }
 
-    /** Feed one tick of flight. Returns true when a climb just topped out short of the upper bound. */
-    boolean sample(double y, double velocityY, RocketMode mode, double upper, double tolerance, int climbsPerRocket) {
-        if (!Double.isFinite(y) || !Double.isFinite(velocityY) || !Double.isFinite(upper)
+    /** A climb reached its highest point on the last sample. */
+    boolean toppedOut() {
+        return toppedOut;
+    }
+
+    /** Y of the most recent climb's peak, or NaN before the first one. */
+    double lastPeakY() {
+        return lastPeakY;
+    }
+
+    /** Highest peak this flight, or NaN before the first one. */
+    double bestPeakY() {
+        return bestPeakY;
+    }
+
+    /**
+     * Feed one tick of flight.
+     *
+     * @param ceiling the upper bound, or {@link #NO_CEILING}
+     * @return true when a climb just topped out short of the target height
+     */
+    boolean sample(double y, double velocityY, RocketMode mode, double ceiling, double tolerance, int climbsPerRocket) {
+        toppedOut = false;
+        if (!Double.isFinite(y) || !Double.isFinite(velocityY) || Double.isInfinite(ceiling)
             || !Double.isFinite(tolerance) || tolerance < 0.0 || climbsPerRocket < 1) {
             reset();
             return false;
@@ -56,11 +86,16 @@ final class GlideCycle {
         if (!wasGoingUp && goingUp) peakY = y;
         if (wasGoingUp || goingUp) peakY = Math.max(peakY, y);
 
-        boolean toppedOut = wasGoingUp && !goingUp;
-        if (!toppedOut) return false;
+        if (!wasGoingUp || goingUp) return false;
 
+        toppedOut = true;
         climbs++;
-        boolean shortApex = mode != RocketMode.OFF && upper - peakY > tolerance;
+        // with no ceiling, measure against the best peak before this one; the first climb sets it
+        double target = Double.isNaN(ceiling) ? bestPeakY : ceiling;
+        lastPeakY = peakY;
+        bestPeakY = Double.isNaN(bestPeakY) ? peakY : Math.max(bestPeakY, peakY);
+
+        boolean shortApex = mode != RocketMode.OFF && !Double.isNaN(target) && target - peakY > tolerance;
         boolean boostTurn = mode == RocketMode.BOOST && climbs % climbsPerRocket == 0;
         if (shortApex || boostTurn) {
             needsRocket = true;

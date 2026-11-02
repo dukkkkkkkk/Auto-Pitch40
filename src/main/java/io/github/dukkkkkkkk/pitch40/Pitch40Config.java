@@ -21,8 +21,15 @@ public class Pitch40Config {
     public static final class Corridor {
         /** Below this Y the bot pitches up to climb. */
         public double lowerBound = 360.0;
-        /** Above this Y the bot pitches down to dive and regain speed. */
+        /** Above this Y the bot pitches down to dive and regain speed. Ignored when {@link #ceiling} is off. */
         public double upperBound = 420.0;
+        /**
+         * Use the upper bound. With it off there is no height limit: each climb runs until it tops out,
+         * then the bot dives {@link #diveDepth} blocks under that peak. With boost rockets it keeps gaining height.
+         */
+        public boolean ceiling = true;
+        /** No ceiling only: how far under the last peak each dive goes before climbing again. */
+        public double diveDepth = 60.0;
         /** Degrees of pitch change per tick while swinging between -40 and +40. */
         public float rotationSpeed = 4.0f;
         /** Hold a fixed heading instead of keeping the current yaw. */

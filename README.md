@@ -7,6 +7,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
 ## Features
 
 - **Pitch40 flight** between two configurable heights, with an optional fixed heading
+- **No ceiling mode**: drop the upper height and let it climb as high as the rockets take it
 - **Rockets only where they pay off**:
   - `keep`: a rocket only when a climb tops out too far under the upper height, or as an emergency when sinking well under the lower one
   - `boost`: as `keep`, plus a rocket every few climbs for speed
@@ -25,7 +26,7 @@ Requires the `java` ZenithProxy release channel (plugins aren't supported on `li
 
 ## Using it
 
-1. Start gliding at or above the upper height. If you're carrying rockets, you can start anywhere
+1. Start gliding at or above the upper height (with the ceiling off, 40 above the lower height). If you're carrying rockets, you can start anywhere
 2. Run `pitch40 on`
 3. Disconnect. The bot only flies while no player is controlling the proxy
 
@@ -39,6 +40,9 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 |---|---|---|
 | `pitch40 on/off` | off | Turns it on or off |
 | `pitch40 bounds <lower> <upper>` | 360 420 | Climbs below `lower`, dives above `upper` |
+| `pitch40 lower <y>` | 360 | Sets just the lower height |
+| `pitch40 ceiling on/off` | on | Off removes the upper height (see below) |
+| `pitch40 diveDepth <blocks>` | 60 | With the ceiling off: how far under each peak it dives before climbing again |
 | `pitch40 rotationSpeed <degrees>` | 4 | Pitch change per tick |
 | `pitch40 yaw <degrees>/off` | off | Locks a heading, or keeps the current one |
 | `pitch40 rockets <off/keep/boost>` | keep | Rocket mode |
@@ -57,6 +61,15 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 priority <n>` | 7500 | Input priority. Beats AntiAFK; KillAura and AutoEat still win |
 
 Run `pitch40` on its own to see the current settings and what the bot is doing.
+
+### No ceiling
+
+`pitch40 ceiling off` removes the upper height. Each climb runs until it tops out, then the bot dives `diveDepth` blocks under that peak and climbs again. Rockets are measured against the best peak so far instead of the upper height:
+
+- `keep` holds the highest point it has reached
+- `boost` adds a rocket every climb (or every `climbsPerRocket`), so each peak is higher than the last and it keeps gaining height
+
+The lower height still works as a floor: it always climbs there, and the emergency rockets and auto log still go off it. If you're flying far above it, raise it with `pitch40 lower <y>` so auto log triggers before a long fall.
 
 Settings are saved in `plugins/config/pitch40.json`. Stop ZenithProxy before editing the file by hand. The rocket hotbar slot (`rockets.hotbarSlot`, default 8) can only be changed there, and only takes effect after a restart.
 

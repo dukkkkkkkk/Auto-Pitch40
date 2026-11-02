@@ -23,7 +23,7 @@ import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
 
 public class Pitch40Command extends Command {
     private static final double MIN_Y = -128;
-    private static final double MAX_Y = 512;
+    private static final double MAX_Y = 100_000;
 
     @Override
     public CommandUsage commandUsage() {
@@ -35,6 +35,9 @@ public class Pitch40Command extends Command {
 
                 Dives at +40 pitch until the lower bound, then climbs at -40 until the upper bound.
                 Start it while gliding at or above the upper bound (or anywhere if carrying rockets).
+
+                With the ceiling off there is no upper bound: each climb runs until it tops out,
+                then it dives diveDepth blocks under that peak. With boost rockets it keeps gaining height.
 
                 Rockets:
                   off - free glide only
@@ -50,6 +53,9 @@ public class Pitch40Command extends Command {
             .usageLines(
                 "on/off",
                 "bounds <lower> <upper>",
+                "lower <y>",
+                "ceiling on/off",
+                "diveDepth <blocks>",
                 "rotationSpeed <degrees per tick>",
                 "yaw <degrees>/off",
                 "rockets <off/keep/boost>",
@@ -79,7 +85,10 @@ public class Pitch40Command extends Command {
                 c.getSource().getEmbed()
                     .title("Pitch40 " + toggleStrCaps(CONFIG.enabled));
             }))
-            .then(corridorCommands())
+            .then(boundsCommand())
+            .then(lowerCommand())
+            .then(ceilingCommand())
+            .then(diveDepthCommand())
             .then(literal("rotationSpeed").then(argument("degrees", floatArg(0.5f, 20f)).executes(c -> {
                 CONFIG.corridor.rotationSpeed = getFloat(c, "degrees");
                 c.getSource().getEmbed()
@@ -108,7 +117,7 @@ public class Pitch40Command extends Command {
             })));
     }
 
-    private LiteralArgumentBuilder<CommandContext> corridorCommands() {
+    private LiteralArgumentBuilder<CommandContext> boundsCommand() {
         return literal("bounds").then(argument("lower", doubleArg(MIN_Y, MAX_Y)).then(argument("upper", doubleArg(MIN_Y, MAX_Y)).executes(c -> {
             double lower = getDouble(c, "lower");
             double upper = getDouble(c, "upper");
@@ -124,6 +133,42 @@ public class Pitch40Command extends Command {
                 .title("Bounds Set");
             return OK;
         })));
+    }
+
+    private LiteralArgumentBuilder<CommandContext> lowerCommand() {
+        return literal("lower").then(argument("y", doubleArg(MIN_Y, MAX_Y)).executes(c -> {
+            double lower = getDouble(c, "y");
+            if (CONFIG.corridor.ceiling && lower >= CONFIG.corridor.upperBound) {
+                c.getSource().getEmbed()
+                    .title("Error")
+                    .description("The lower bound must be under the upper bound (" + CONFIG.corridor.upperBound
+                        + "). Turn the ceiling off to fly without one");
+                return ERROR;
+            }
+            CONFIG.corridor.lowerBound = lower;
+            c.getSource().getEmbed()
+                .title("Lower Bound Set");
+            return OK;
+        }));
+    }
+
+    private LiteralArgumentBuilder<CommandContext> ceilingCommand() {
+        return literal("ceiling").then(argument("toggle", toggle()).executes(c -> {
+            CONFIG.corridor.ceiling = getToggle(c, "toggle");
+            c.getSource().getEmbed()
+                .title("Ceiling " + toggleStrCaps(CONFIG.corridor.ceiling))
+                .description(CONFIG.corridor.ceiling
+                    ? "Climbs stop at Y " + CONFIG.corridor.upperBound
+                    : "No height limit: dives " + CONFIG.corridor.diveDepth + " blocks under each peak");
+        }));
+    }
+
+    private LiteralArgumentBuilder<CommandContext> diveDepthCommand() {
+        return literal("diveDepth").then(argument("blocks", doubleArg(10, 1000)).executes(c -> {
+            CONFIG.corridor.diveDepth = getDouble(c, "blocks");
+            c.getSource().getEmbed()
+                .title("Dive Depth Set");
+        }));
     }
 
     private LiteralArgumentBuilder<CommandContext> rocketCommands() {
@@ -229,7 +274,9 @@ public class Pitch40Command extends Command {
             .primaryColor()
             .addField("Pitch40", toggleStr(CONFIG.enabled))
             .addField("Status", module.status())
-            .addField("Bounds", corridor.lowerBound + " - " + corridor.upperBound)
+            .addField("Bounds", corridor.ceiling
+                ? corridor.lowerBound + " - " + corridor.upperBound
+                : corridor.lowerBound + " - no ceiling | dives " + corridor.diveDepth + " under each peak")
             .addField("Rotation Speed", corridor.rotationSpeed + " deg/tick")
             .addField("Yaw", corridor.lockYaw ? String.valueOf(corridor.yaw) : "current heading")
             .addField("Rockets", rockets.mode.name().toLowerCase()

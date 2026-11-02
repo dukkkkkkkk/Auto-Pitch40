@@ -50,6 +50,8 @@ public class Pitch40Module extends AbstractInventoryModule {
     /** Under the lower bound by this much: emergency rocket even at speed. */
     private static final double EMERGENCY_DEEP = 30.0;
     private static final double STALL_SPEED = 0.8;
+    /** No ceiling: sinking this fast (blocks/tick) while fully pitched up means the climb has failed. */
+    private static final double FAILED_CLIMB_SINK = 0.1;
     /** A climbing rocket is skipped when speed along the look direction is already this high (blocks/tick). */
     private static final double ROCKET_GATE = 0.7;
 
@@ -64,6 +66,8 @@ public class Pitch40Module extends AbstractInventoryModule {
     private boolean flying = false;
     private boolean pitchingDown = true;
     private float pitch = MAX_PITCH;
+    /** No ceiling: the Y the current dive started from (the last peak). */
+    private double diveFromY = 0.0;
     private int rocketCooldown = 0;
     private boolean jumpHeld = false;
     private RequestFuture rocketMove = RequestFuture.rejected;
@@ -159,15 +163,16 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         if (!flying && !tryStartFlight()) return;
 
-        steerPitch();
+        // sample first so a climb that just topped out can turn into a dive this tick
         cycle.sample(
             BOT.getY(),
             BOT.getVelocity().getY(),
             CONFIG.rockets.mode,
-            CONFIG.corridor.upperBound,
+            CONFIG.corridor.ceiling ? CONFIG.corridor.upperBound : GlideCycle.NO_CEILING,
             CONFIG.rockets.heightTolerance,
             CONFIG.rockets.climbsPerRocket
         );
+        steerPitch();
         boolean firingRocket = submitFlightInput(wantsRocket());
         chestSwap.tick(!firingRocket && !sinking() && !elytra.busy() && rocketMove.isCompleted());
     }
@@ -200,40 +205,65 @@ public class Pitch40Module extends AbstractInventoryModule {
     private boolean tryStartFlight() {
         if (!canStartFlight()) {
             if (waitingToStart.show()) {
-                info("Waiting: glide at or above Y {} to start Pitch40, or carry rockets", (int) CONFIG.corridor.upperBound);
+                int startY = (int) (CONFIG.corridor.ceiling
+                    ? Math.max(CONFIG.corridor.upperBound, CONFIG.corridor.lowerBound + START_MARGIN)
+                    : CONFIG.corridor.lowerBound + START_MARGIN);
+                info("Waiting: glide at or above Y {} to start Pitch40, or carry rockets", startY);
             }
             return false;
         }
         flying = true;
         waitingToStart.clear();
-        pitchingDown = BOT.getY() > CONFIG.corridor.lowerBound;
+        double y = BOT.getY();
+        pitchingDown = y > CONFIG.corridor.lowerBound;
+        diveFromY = y;
         pitch = MathHelper.clamp(BOT.getPitch(), -MAX_PITCH, MAX_PITCH);
         cycle.reset();
-        info("Pitch40 started at Y {} (rockets: {})", (int) BOT.getY(), CONFIG.rockets.mode.name().toLowerCase());
+        info("Pitch40 started at Y {} (rockets: {}{})", (int) y, CONFIG.rockets.mode.name().toLowerCase(),
+            CONFIG.corridor.ceiling ? "" : ", no ceiling");
         return true;
     }
 
     private boolean canStartFlight() {
         var corridor = CONFIG.corridor;
         double y = BOT.getY();
-        if (y >= corridor.upperBound && y - START_MARGIN >= corridor.lowerBound) return true;
+        boolean aboveFloor = y - START_MARGIN >= corridor.lowerBound;
+        if (aboveFloor && (!corridor.ceiling || y >= corridor.upperBound)) return true;
         // with rockets the corridor can be climbed back into from anywhere
         return CONFIG.rockets.mode != RocketMode.OFF && rocketCount() > 0;
     }
 
-    /** Same corridor logic as Meteor's ElytraFly Pitch40 mode. */
+    /**
+     * Picks dive or climb, then turns the pitch toward +40 or -40.
+     *
+     * <p>With a ceiling this is Meteor's ElytraFly Pitch40 logic: dive at the upper bound, climb at the lower.
+     * With no ceiling a climb runs until it tops out, then the bot dives {@code diveDepth} blocks under that
+     * peak before climbing again. The lower bound still forces a climb either way.
+     */
     private void steerPitch() {
         var corridor = CONFIG.corridor;
         double y = BOT.getY();
-        if (pitchingDown && y <= corridor.lowerBound) {
-            pitchingDown = false;
-        } else if (!pitchingDown && y >= corridor.upperBound) {
-            pitchingDown = true;
+        if (pitchingDown) {
+            boolean atFloor = y <= corridor.lowerBound;
+            boolean deepEnough = !corridor.ceiling && y <= diveFromY - corridor.diveDepth;
+            if (atFloor || deepEnough) pitchingDown = false;
+        } else if (corridor.ceiling) {
+            if (y >= corridor.upperBound) startDive(y);
+        } else if (cycle.toppedOut()) {
+            startDive(cycle.lastPeakY());
+        } else if (pitch <= -MAX_PITCH && BOT.getVelocity().getY() < -FAILED_CLIMB_SINK && y > corridor.lowerBound) {
+            // fully pitched up but still sinking: too slow to climb, dive again to build speed
+            startDive(y);
         }
         float step = Math.max(0.1f, corridor.rotationSpeed);
         pitch = pitchingDown
             ? Math.min(MAX_PITCH, pitch + step)
             : Math.max(-MAX_PITCH, pitch - step);
+    }
+
+    private void startDive(double fromY) {
+        pitchingDown = true;
+        diveFromY = fromY;
     }
 
     /** Far enough under the corridor that the glide matters more than anything else. */
@@ -344,6 +374,9 @@ public class Pitch40Module extends AbstractInventoryModule {
             .append(" | pitch ").append(Math.round(pitch))
             .append(" | rockets fired ").append(rockets.firedCount());
         if (rockets.pending()) status.append(" (unconfirmed)");
+        if (!CONFIG.corridor.ceiling && !Double.isNaN(cycle.bestPeakY())) {
+            status.append(" | best peak Y ").append(Math.round(cycle.bestPeakY()));
+        }
         if (CONFIG.chestSwap.enabled) status.append(" | chest swaps ").append(chestSwap.swapCount());
         return status.toString();
     }
