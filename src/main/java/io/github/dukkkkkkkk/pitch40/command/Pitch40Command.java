@@ -1,13 +1,17 @@
 package io.github.dukkkkkkkk.pitch40.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.zenith.Proxy;
 import com.zenith.command.api.Command;
 import com.zenith.command.api.CommandCategory;
 import com.zenith.command.api.CommandContext;
 import com.zenith.command.api.CommandUsage;
 import com.zenith.discord.Embed;
 import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
+import io.github.dukkkkkkkk.pitch40.module.CoordReportModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
+
+import java.time.Duration;
 
 import static com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg;
 import static com.mojang.brigadier.arguments.DoubleArgumentType.getDouble;
@@ -48,6 +52,8 @@ public class Pitch40Command extends Command {
 
                 Auto log disconnects if a flight sinks too far under the lower bound.
 
+                Coords posts the bot's position to Discord and the terminal every intervalHours (default 24).
+
                 Only runs while no player is controlling the proxy, and pauses while the pathfinder is active.
                 """)
             .usageLines(
@@ -71,6 +77,9 @@ public class Pitch40Command extends Command {
                 "autoLog on/off",
                 "autoLog below <blocks under the lower bound>",
                 "autoLog cancelReconnect on/off",
+                "coords on/off",
+                "coords interval <hours>",
+                "coords now",
                 "priority <priority>"
             )
             .build();
@@ -110,6 +119,7 @@ public class Pitch40Command extends Command {
             .then(elytraCommands())
             .then(chestSwapCommands())
             .then(autoLogCommands())
+            .then(coordsCommands())
             .then(literal("priority").then(argument("priority", integer()).executes(c -> {
                 CONFIG.priority = getInteger(c, "priority");
                 c.getSource().getEmbed()
@@ -263,6 +273,41 @@ public class Pitch40Command extends Command {
             })));
     }
 
+    private LiteralArgumentBuilder<CommandContext> coordsCommands() {
+        return literal("coords")
+            .then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.coordReport.enabled = getToggle(c, "toggle");
+                MODULE.get(CoordReportModule.class).syncEnabledFromConfig();
+                c.getSource().getEmbed()
+                    .title("Coords Report " + toggleStrCaps(CONFIG.coordReport.enabled));
+            }))
+            .then(literal("interval").then(argument("hours", doubleArg(0.1, 720)).executes(c -> {
+                CONFIG.coordReport.intervalHours = getDouble(c, "hours");
+                c.getSource().getEmbed()
+                    .title("Coords Interval Set")
+                    .description("Next report in " + formatDuration(MODULE.get(CoordReportModule.class).timeUntilNextReport()));
+            })))
+            .then(literal("now").executes(c -> {
+                if (!Proxy.getInstance().isConnected()) {
+                    c.getSource().getEmbed()
+                        .title("Error")
+                        .description("Not connected to the server");
+                    return ERROR;
+                }
+                MODULE.get(CoordReportModule.class).report("Coords");
+                c.getSource().getEmbed()
+                    .title("Coords Sent");
+                return OK;
+            }));
+    }
+
+    private static String formatDuration(Duration duration) {
+        if (!duration.isPositive()) return "under a minute";
+        long hours = duration.toHours();
+        long minutes = duration.toMinutesPart();
+        return hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
+    }
+
     @Override
     public void defaultEmbed(Embed embed) {
         var module = MODULE.get(Pitch40Module.class);
@@ -293,6 +338,10 @@ public class Pitch40Command extends Command {
                 + " | under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound)
                 + " (" + CONFIG.autoLog.blocksBelowLowerBound + " below the lower bound)"
                 + (CONFIG.autoLog.cancelReconnect ? " | no reconnect" : ""))
+            .addField("Coords Report", toggleStr(CONFIG.coordReport.enabled) + " | every " + CONFIG.coordReport.intervalHours
+                + " hours" + (CONFIG.coordReport.enabled
+                    ? " | next in " + formatDuration(MODULE.get(CoordReportModule.class).timeUntilNextReport())
+                    : ""))
             .addField("Priority", CONFIG.priority);
     }
 }

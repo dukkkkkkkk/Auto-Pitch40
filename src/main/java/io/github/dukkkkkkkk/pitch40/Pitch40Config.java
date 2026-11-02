@@ -17,6 +17,7 @@ public class Pitch40Config {
     public final Elytra elytra = new Elytra();
     public final ChestSwap chestSwap = new ChestSwap();
     public final AutoLog autoLog = new AutoLog();
+    public final CoordReport coordReport = new CoordReport();
 
     public static final class Corridor {
         /** Below this Y the bot pitches up to climb. */
@@ -86,5 +87,18 @@ public class Pitch40Config {
         public double blocksBelowLowerBound = 40.0;
         /** Stop AutoReconnect from logging straight back in afterwards. */
         public boolean cancelReconnect = true;
+    }
+
+    public static final class CoordReport {
+        /** Post the bot's coordinates to Discord and the terminal on an interval. */
+        public boolean enabled = true;
+        public double intervalHours = 24.0;
+
+        // set by the plugin to time the next report and work out distance travelled; no need to edit
+        public long lastReportEpochMs = 0L;
+        public double lastX = 0.0;
+        public double lastZ = 0.0;
+        /** Empty until the first report. */
+        public String lastDimension = "";
     }
 }
