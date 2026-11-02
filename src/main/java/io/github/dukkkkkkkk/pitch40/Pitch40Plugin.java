@@ -4,7 +4,7 @@ import com.zenith.plugin.api.Plugin;
 import com.zenith.plugin.api.PluginAPI;
 import com.zenith.plugin.api.ZenithProxyPlugin;
 import io.github.dukkkkkkkk.pitch40.command.Pitch40Command;
-import io.github.dukkkkkkkk.pitch40.module.CoordReportModule;
+import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 
@@ -26,7 +26,7 @@ public class Pitch40Plugin implements ZenithProxyPlugin {
         // config must be registered before the module reads it in its constructor
         CONFIG = pluginAPI.registerConfig(BuildConstants.PLUGIN_ID, Pitch40Config.class);
         pluginAPI.registerModule(new Pitch40Module());
-        pluginAPI.registerModule(new CoordReportModule());
+        pluginAPI.registerModule(new CoordsModule());
         pluginAPI.registerCommand(new Pitch40Command());
     }
 }

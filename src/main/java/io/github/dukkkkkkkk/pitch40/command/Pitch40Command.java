@@ -8,10 +8,11 @@ import com.zenith.command.api.CommandContext;
 import com.zenith.command.api.CommandUsage;
 import com.zenith.discord.Embed;
 import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
-import io.github.dukkkkkkkk.pitch40.module.CoordReportModule;
+import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
 
 import java.time.Duration;
+import java.util.Locale;
 
 import static com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg;
 import static com.mojang.brigadier.arguments.DoubleArgumentType.getDouble;
@@ -20,6 +21,7 @@ import static com.mojang.brigadier.arguments.FloatArgumentType.getFloat;
 import static com.mojang.brigadier.arguments.IntegerArgumentType.getInteger;
 import static com.mojang.brigadier.arguments.IntegerArgumentType.integer;
 import static com.mojang.brigadier.arguments.StringArgumentType.getString;
+import static com.mojang.brigadier.arguments.StringArgumentType.word;
 import static com.zenith.Globals.MODULE;
 import static com.zenith.command.brigadier.ToggleArgumentType.getToggle;
 import static com.zenith.command.brigadier.ToggleArgumentType.toggle;
@@ -53,6 +55,7 @@ public class Pitch40Command extends Command {
                 Auto log disconnects if a flight sinks too far under the lower bound.
 
                 Coords posts the bot's position to Discord and the terminal every intervalHours (default 24).
+                Whisper the bot "eta" or "current" and it whispers its position back (whitelisted players only).
 
                 Only runs while no player is controlling the proxy, and pauses while the pathfinder is active.
                 """)
@@ -80,6 +83,9 @@ public class Pitch40Command extends Command {
                 "coords on/off",
                 "coords interval <hours>",
                 "coords now",
+                "whisper on/off",
+                "whisper add <keyword>",
+                "whisper remove <keyword>",
                 "priority <priority>"
             )
             .build();
@@ -120,6 +126,7 @@ public class Pitch40Command extends Command {
             .then(chestSwapCommands())
             .then(autoLogCommands())
             .then(coordsCommands())
+            .then(whisperCommands())
             .then(literal("priority").then(argument("priority", integer()).executes(c -> {
                 CONFIG.priority = getInteger(c, "priority");
                 c.getSource().getEmbed()
@@ -277,7 +284,7 @@ public class Pitch40Command extends Command {
         return literal("coords")
             .then(argument("toggle", toggle()).executes(c -> {
                 CONFIG.coordReport.enabled = getToggle(c, "toggle");
-                MODULE.get(CoordReportModule.class).syncEnabledFromConfig();
+                MODULE.get(CoordsModule.class).syncEnabledFromConfig();
                 c.getSource().getEmbed()
                     .title("Coords Report " + toggleStrCaps(CONFIG.coordReport.enabled));
             }))
@@ -285,7 +292,7 @@ public class Pitch40Command extends Command {
                 CONFIG.coordReport.intervalHours = getDouble(c, "hours");
                 c.getSource().getEmbed()
                     .title("Coords Interval Set")
-                    .description("Next report in " + formatDuration(MODULE.get(CoordReportModule.class).timeUntilNextReport()));
+                    .description("Next report in " + formatDuration(MODULE.get(CoordsModule.class).timeUntilNextReport()));
             })))
             .then(literal("now").executes(c -> {
                 if (!Proxy.getInstance().isConnected()) {
@@ -294,11 +301,37 @@ public class Pitch40Command extends Command {
                         .description("Not connected to the server");
                     return ERROR;
                 }
-                MODULE.get(CoordReportModule.class).report("Coords");
+                MODULE.get(CoordsModule.class).report("Coords");
                 c.getSource().getEmbed()
                     .title("Coords Sent");
                 return OK;
             }));
+    }
+
+    private LiteralArgumentBuilder<CommandContext> whisperCommands() {
+        return literal("whisper")
+            .then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.whisperReply.enabled = getToggle(c, "toggle");
+                MODULE.get(CoordsModule.class).syncEnabledFromConfig();
+                c.getSource().getEmbed()
+                    .title("Whisper Reply " + toggleStrCaps(CONFIG.whisperReply.enabled));
+            }))
+            .then(literal("add").then(argument("keyword", word()).executes(c -> {
+                String keyword = getString(c, "keyword").toLowerCase(Locale.ROOT);
+                if (!CONFIG.whisperReply.keywords.contains(keyword)) CONFIG.whisperReply.keywords.add(keyword);
+                c.getSource().getEmbed()
+                    .title("Keyword Added")
+                    .description("Keywords: " + String.join(", ", CONFIG.whisperReply.keywords));
+            })))
+            .then(literal("remove").then(argument("keyword", word()).executes(c -> {
+                String keyword = getString(c, "keyword").toLowerCase(Locale.ROOT);
+                CONFIG.whisperReply.keywords.removeIf(k -> k.equalsIgnoreCase(keyword));
+                c.getSource().getEmbed()
+                    .title("Keyword Removed")
+                    .description(CONFIG.whisperReply.keywords.isEmpty()
+                        ? "No keywords left, so nothing will trigger a reply"
+                        : "Keywords: " + String.join(", ", CONFIG.whisperReply.keywords));
+            })));
     }
 
     private static String formatDuration(Duration duration) {
@@ -340,8 +373,11 @@ public class Pitch40Command extends Command {
                 + (CONFIG.autoLog.cancelReconnect ? " | no reconnect" : ""))
             .addField("Coords Report", toggleStr(CONFIG.coordReport.enabled) + " | every " + CONFIG.coordReport.intervalHours
                 + " hours" + (CONFIG.coordReport.enabled
-                    ? " | next in " + formatDuration(MODULE.get(CoordReportModule.class).timeUntilNextReport())
+                    ? " | next in " + formatDuration(MODULE.get(CoordsModule.class).timeUntilNextReport())
                     : ""))
+            .addField("Whisper Reply", toggleStr(CONFIG.whisperReply.enabled) + " | keywords: "
+                + (CONFIG.whisperReply.keywords.isEmpty() ? "none" : String.join(", ", CONFIG.whisperReply.keywords))
+                + " | whitelisted players only")
             .addField("Priority", CONFIG.priority);
     }
 }

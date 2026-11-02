@@ -1,5 +1,8 @@
 package io.github.dukkkkkkkk.pitch40;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Plugin configuration, saved to {@code plugins/config/pitch40.json}.
  *
@@ -18,6 +21,7 @@ public class Pitch40Config {
     public final ChestSwap chestSwap = new ChestSwap();
     public final AutoLog autoLog = new AutoLog();
     public final CoordReport coordReport = new CoordReport();
+    public final WhisperReply whisperReply = new WhisperReply();
 
     public static final class Corridor {
         /** Below this Y the bot pitches up to climb. */
@@ -100,5 +104,12 @@ public class Pitch40Config {
         public double lastZ = 0.0;
         /** Empty until the first report. */
         public String lastDimension = "";
+    }
+
+    public static final class WhisperReply {
+        /** Whisper the position back to whitelisted players who whisper one of the keywords. */
+        public boolean enabled = true;
+        /** Whole-message matches, not case sensitive. */
+        public List<String> keywords = new ArrayList<>(List.of("eta", "current"));
     }
 }
