@@ -69,7 +69,8 @@ public class CoordReportModule extends Module {
         saveConfigAsync();
 
         String position = Math.round(x) + ", " + Math.round(y) + ", " + Math.round(z);
-        if (!CONFIG.discord.reportCoords) {
+        // ZenithProxy's own config; CONFIG here is the plugin's
+        if (!com.zenith.Globals.CONFIG.discord.reportCoords) {
             info("{}: {} in {} ({})", title, position, dimension, moved);
             discordNotification(Embed.builder()
                 .title(title)
