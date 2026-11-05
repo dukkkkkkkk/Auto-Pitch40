@@ -68,6 +68,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     private final ChestSwap chestSwap;
     private final AutoLog autoLog = new AutoLog(this);
     private final Launcher launcher = new Launcher(this);
+    private final TurnAnticipation turns = new TurnAnticipation();
 
     /** A Pitch40 cycle is running. Cleared on landing, dimension change, or disable. */
     private boolean flying = false;
@@ -208,6 +209,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             CONFIG.rockets.heightTolerance,
             CONFIG.rockets.climbsPerRocket
         );
+        turns.sample(BOT.getY(), BOT.getVelocity().getY(), CONFIG.corridor.upperBound, maxTurnLead());
         steerPitch();
         boolean firingRocket = submitFlightInput(wantsRocket());
         chestSwap.tick(!firingRocket && !boostingWithRocket() && !sinking() && !elytra.busy() && rocketMove.isCompleted());
@@ -255,6 +257,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         diveFromY = y;
         pitch = MathHelper.clamp(BOT.getPitch(), -MAX_PITCH, MAX_PITCH);
         cycle.reset();
+        turns.reset();
         info("Pitch40 started at Y {} (rockets: {}{})", (int) y, CONFIG.rockets.mode.name().toLowerCase(),
             CONFIG.corridor.ceiling ? "" : ", no ceiling");
         return true;
@@ -280,12 +283,17 @@ public class Pitch40Module extends AbstractInventoryModule {
     private void steerPitch() {
         var corridor = CONFIG.corridor;
         double y = BOT.getY();
+        boolean anticipate = CONFIG.corridor.stayInBounds;
         if (pitchingDown) {
-            boolean atFloor = y <= corridor.lowerBound;
-            boolean deepEnough = !corridor.ceiling && y <= diveFromY - corridor.diveDepth;
-            if (atFloor || deepEnough) pitchingDown = false;
-        } else if (corridor.ceiling && y >= corridor.upperBound) {
+            // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak
+            double target = corridor.ceiling
+                ? corridor.lowerBound
+                : Math.max(corridor.lowerBound, diveFromY - corridor.diveDepth);
+            turns.diving(target);
+            if (y <= target + (anticipate ? turns.bottomLead() : 0.0)) pitchingDown = false;
+        } else if (corridor.ceiling && y >= corridor.upperBound - (anticipate ? turns.topLead() : 0.0)) {
             startDive(y);
+            turns.turnedAtCeiling();
         } else if (cycle.toppedOut()) {
             // the climb peaked short of the upper bound (or there's no ceiling): dive to rebuild speed
             startDive(cycle.lastPeakY());
@@ -297,6 +305,14 @@ public class Pitch40Module extends AbstractInventoryModule {
         pitch = pitchingDown
             ? Math.min(MAX_PITCH, pitch + step)
             : Math.max(-MAX_PITCH, pitch - step);
+    }
+
+    /** At most half the swing, so a bad reading can't collapse it. */
+    private static double maxTurnLead() {
+        var corridor = CONFIG.corridor;
+        return corridor.ceiling
+            ? (corridor.upperBound - corridor.lowerBound) / 2.0
+            : corridor.diveDepth / 2.0;
     }
 
     private void startDive(double fromY) {

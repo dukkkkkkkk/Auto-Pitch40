@@ -51,6 +51,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 lower <y>` | 360 | Sets just the lower height |
 | `pitch40 ceiling on/off` | on | Off removes the upper height (see below) |
 | `pitch40 diveDepth <blocks>` | 60 | With the ceiling off: how far under each peak it dives before climbing again |
+| `pitch40 stayInBounds on/off` | on | Learns how far it overshoots each turn and turns that much earlier, so it really stays between the bounds (60 block dives with 360-420). Off, it rises about 24 blocks past the upper bound before diving (about 90 block dives) but averages about 10% faster |
 | `pitch40 rotationSpeed <degrees>` | 4 | Pitch change per tick |
 | `pitch40 yaw <degrees>/off` | off | Locks a heading, or keeps the current one |
 | `pitch40 quad set <xz>` | | Locks the heading to a quadrant or axis: X sign then Z sign. Corners `++` `+-` `-+` `--`, axes `+0` `-0` `0+` `0-`. E.g. `++` flies toward +X +Z, `0-` straight toward -Z |

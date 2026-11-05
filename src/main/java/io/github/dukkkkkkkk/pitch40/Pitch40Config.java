@@ -38,6 +38,12 @@ public class Pitch40Config {
         public double diveDepth = 60.0;
         /** Degrees of pitch change per tick while swinging between -40 and +40. */
         public float rotationSpeed = 4.0f;
+        /**
+         * Start each turn early by however far the last one overshot, so the swing stays between the bounds.
+         * Without it the bot rises about 24 blocks past the upper bound before diving (90 block dives with
+         * 360-420 bounds instead of 60). Costs about 10% average speed, since smaller swings build less speed.
+         */
+        public boolean stayInBounds = true;
         /** Hold a fixed heading instead of keeping the current yaw. */
         public boolean lockYaw = false;
         public float yaw = 0.0f;

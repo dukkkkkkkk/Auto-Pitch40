@@ -71,6 +71,7 @@ public class Pitch40Command extends Command {
                 "lower <y>",
                 "ceiling on/off",
                 "diveDepth <blocks>",
+                "stayInBounds on/off",
                 "rotationSpeed <degrees per tick>",
                 "yaw <degrees>/off",
                 "quad set <++/+-/-+/--/+0/-0/0+/0->",
@@ -125,6 +126,14 @@ public class Pitch40Command extends Command {
             .then(lowerCommand())
             .then(ceilingCommand())
             .then(diveDepthCommand())
+            .then(literal("stayInBounds").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.corridor.stayInBounds = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Stay In Bounds " + toggleStrCaps(CONFIG.corridor.stayInBounds))
+                    .description(CONFIG.corridor.stayInBounds
+                        ? "Turns early so it stays between the bounds. About 10% slower"
+                        : "Turns at the bounds, overshooting the top by about 24 blocks. About 10% faster");
+            })))
             .then(literal("rotationSpeed").then(argument("degrees", floatArg(0.5f, 20f)).executes(c -> {
                 CONFIG.corridor.rotationSpeed = getFloat(c, "degrees");
                 c.getSource().getEmbed()
@@ -498,6 +507,7 @@ public class Pitch40Command extends Command {
                 ? corridor.lowerBound + " - " + corridor.upperBound
                 : corridor.lowerBound + " - no ceiling | dives " + corridor.diveDepth + " under each peak")
             .addField("Rotation Speed", corridor.rotationSpeed + " deg/tick")
+            .addField("Stay In Bounds", toggleStr(corridor.stayInBounds))
             .addField("Heading", !corridor.lockYaw ? "current heading"
                 : !corridor.quad.isEmpty() ? "quad " + corridor.quad + " " + Quadrant.describe(corridor.quad) + ", yaw " + Math.round(corridor.yaw)
                 : "yaw " + corridor.yaw)
