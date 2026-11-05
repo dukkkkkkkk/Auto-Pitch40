@@ -82,6 +82,8 @@ public class Pitch40Command extends Command {
                 "elytra replace on/off",
                 "elytra replace durability <durability>",
                 "elytra last on/off",
+                "elytra minSpare <durability>",
+                "elytras",
                 "elytra warning <durability>",
                 "chestSwap on/off",
                 "chestSwap interval <ticks>",
@@ -145,6 +147,22 @@ public class Pitch40Command extends Command {
             .then(quadCommands())
             .then(rocketCommands())
             .then(elytraCommands())
+            .then(literal("elytras").executes(c -> {
+                if (!Proxy.getInstance().isConnected()) {
+                    c.getSource().getEmbed()
+                        .title("Error")
+                        .description("Not connected to the server");
+                    return ERROR;
+                }
+                var module = MODULE.get(Pitch40Module.class);
+                c.getSource().getEmbed()
+                    .title("Elytras")
+                    .description(String.join("\n", module.elytraDurabilities()))
+                    .addField("Usable spares", module.spareElytraCount()
+                        + " (at least " + module.minSpareDurability() + " durability)")
+                    .primaryColor();
+                return OK;
+            }))
             .then(chestSwapCommands())
             .then(launchCommands())
             .then(autoLogCommands())
@@ -279,6 +297,12 @@ public class Pitch40Command extends Command {
                     c.getSource().getEmbed()
                         .title("Replace Durability Set");
                 }))))
+            .then(literal("minSpare").then(argument("durability", integer(2, 432)).executes(c -> {
+                CONFIG.elytra.minSpareDurability = getInteger(c, "durability");
+                c.getSource().getEmbed()
+                    .title("Min Spare Durability Set")
+                    .description("Won't swap to a spare with under " + MODULE.get(Pitch40Module.class).minSpareDurability() + " durability");
+            })))
             .then(literal("last").then(argument("toggle", toggle()).executes(c -> {
                 CONFIG.elytra.lastElytra = getToggle(c, "toggle");
                 c.getSource().getEmbed()
@@ -483,7 +507,7 @@ public class Pitch40Command extends Command {
             .addField("Rockets Carried", module.rocketCount() + " (slot " + module.rocketHotbarSlot() + ")")
             .addField("Auto Deploy", toggleStr(elytra.autoDeploy))
             .addField("Elytra Replace", toggleStr(elytra.autoReplace) + " at " + elytra.replaceDurability
-                + " | " + module.spareElytraCount() + " spares")
+                + " | " + module.spareElytraCount() + " usable spares (min " + module.minSpareDurability() + ")")
             .addField("Last Elytra", toggleStr(elytra.lastElytra) + (elytra.lastElytra ? " | disconnects on the last full elytra" : ""))
             .addField("Durability Warning", elytra.lowDurabilityWarning)
             .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | every " + chestSwap.intervalTicks

@@ -432,6 +432,15 @@ public class Pitch40Module extends AbstractInventoryModule {
         return elytra.spareCount();
     }
 
+    /** Worn elytra, then spares grouped by durability, for the {@code pitch40 elytras} command. */
+    public List<String> elytraDurabilities() {
+        return ElytraManager.durabilityList();
+    }
+
+    public int minSpareDurability() {
+        return ElytraManager.minSpareDurability();
+    }
+
     public int chestplateHotbarSlot() {
         return chestSwap.chestplateHotbarSlot();
     }

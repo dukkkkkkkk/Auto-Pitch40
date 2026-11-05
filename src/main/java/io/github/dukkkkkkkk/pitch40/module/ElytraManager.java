@@ -2,11 +2,18 @@ package io.github.dukkkkkkkk.pitch40.module;
 
 import com.zenith.feature.inventory.InventoryActionRequest;
 import com.zenith.feature.inventory.util.InventoryActionMacros;
+import com.zenith.util.ItemUtil;
 import com.zenith.util.RequestFuture;
 import io.github.dukkkkkkkk.pitch40.util.Items;
 import io.github.dukkkkkkkk.pitch40.util.Notice;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.TreeMap;
 
 import static com.zenith.Globals.INVENTORY;
 import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
@@ -60,7 +67,7 @@ final class ElytraManager {
     boolean reachedLastElytra() {
         int threshold = replaceThreshold();
         if (!replacedSinceCheck) {
-            if (usableSpareCount(threshold) == 0) {
+            if (spareCount() == 0) {
                 if (noSpareForLastElytra.show()) {
                     module.info("Last elytra is on, but there's no spare elytra, so it won't disconnect");
                 }
@@ -74,21 +81,23 @@ final class ElytraManager {
         replacedSinceCheck = false;
         var chest = Items.chest();
         boolean wearingFresh = Items.isElytra(chest) && Items.durabilityLeft(chest) > threshold;
-        return wearingFresh && usableSpareCount(threshold) == 0;
-    }
-
-    /** Spares in the inventory with more durability than the replace threshold. */
-    private int usableSpareCount(int threshold) {
-        int count = 0;
-        for (int slot = Items.MAIN_START; slot <= Items.HOTBAR_END; slot++) {
-            var stack = Items.slot(slot);
-            if (Items.isElytra(stack) && Items.durabilityLeft(stack) > threshold) count++;
-        }
-        return count;
+        return wearingFresh && spareCount() == 0;
     }
 
     private static int replaceThreshold() {
         return Math.max(MIN_REPLACE_DURABILITY, CONFIG.elytra.replaceDurability);
+    }
+
+    /**
+     * The least durability a spare needs before the bot will swap to it: the {@code minSpareDurability} setting,
+     * and always above the replace threshold so it never swaps to one it would immediately replace again.
+     */
+    static int minSpareDurability() {
+        return Math.max(CONFIG.elytra.minSpareDurability, replaceThreshold() + 1);
+    }
+
+    static boolean isUsableSpare(@Nullable ItemStack stack) {
+        return Items.isElytra(stack) && Items.durabilityLeft(stack) >= minSpareDurability();
     }
 
     /** An elytra replacement is still being clicked through. */
@@ -96,11 +105,11 @@ final class ElytraManager {
         return !replaceFuture.isCompleted();
     }
 
+    /** Elytras in the inventory (not the worn one) the bot is allowed to swap to. */
     int spareCount() {
         int count = 0;
         for (int slot = Items.MAIN_START; slot <= Items.HOTBAR_END; slot++) {
-            var stack = Items.slot(slot);
-            if (Items.isElytra(stack) && Items.durabilityLeft(stack) > 1) count++;
+            if (isUsableSpare(Items.slot(slot))) count++;
         }
         return count;
     }
@@ -131,9 +140,9 @@ final class ElytraManager {
         }
         if (!Items.inventoryIdle()) return;
 
-        int spareSlot = bestSpareSlot(threshold);
+        int spareSlot = bestSpareSlot();
         if (spareSlot == -1) {
-            if (noSpare.show()) module.warn("Elytra needs replacing but no spare has more than {} durability", threshold);
+            if (noSpare.show()) module.warn("Elytra needs replacing but no spare has at least {} durability", minSpareDurability());
             return;
         }
         int spareDurability = Items.durabilityLeft(Items.slot(spareSlot));
@@ -149,13 +158,13 @@ final class ElytraManager {
         }
     }
 
-    /** Inventory slot of the spare with the most durability above the threshold, or -1. */
-    private int bestSpareSlot(int threshold) {
+    /** Inventory slot of the usable spare with the most durability, or -1. */
+    private int bestSpareSlot() {
         int bestSlot = -1;
-        int bestDurability = threshold;
+        int bestDurability = -1;
         for (int slot = Items.MAIN_START; slot <= Items.HOTBAR_END; slot++) {
             var stack = Items.slot(slot);
-            if (!Items.isElytra(stack)) continue;
+            if (!isUsableSpare(stack)) continue;
             int durability = Items.durabilityLeft(stack);
             if (durability > bestDurability) {
                 bestDurability = durability;
@@ -163,5 +172,43 @@ final class ElytraManager {
             }
         }
         return bestSlot;
+    }
+
+    /**
+     * The worn elytra, then every elytra in the inventory grouped by durability, most first, e.g.
+     * "9x full", "4x 300". Spares too low to swap to are marked.
+     */
+    static List<String> durabilityList() {
+        var lines = new ArrayList<String>();
+        var chest = Items.chest();
+        lines.add(Items.isElytra(chest) ? "Wearing: " + durabilityText(chest) : "Wearing: no elytra");
+
+        // durability left -> how many, highest first
+        var groups = new TreeMap<Integer, Integer>(Comparator.reverseOrder());
+        var full = new HashMap<Integer, Boolean>();
+        for (int slot = Items.MAIN_START; slot <= Items.HOTBAR_END; slot++) {
+            var stack = Items.slot(slot);
+            if (!Items.isElytra(stack)) continue;
+            int durability = Items.durabilityLeft(stack);
+            groups.merge(durability, 1, Integer::sum);
+            full.put(durability, isFull(stack));
+        }
+        if (groups.isEmpty()) {
+            lines.add("No spares");
+            return lines;
+        }
+        int min = minSpareDurability();
+        groups.forEach((durability, count) -> lines.add(count + "x "
+            + (full.get(durability) ? "full" : String.valueOf(durability))
+            + (durability < min ? " (too low to swap to)" : "")));
+        return lines;
+    }
+
+    private static boolean isFull(ItemStack stack) {
+        return ItemUtil.getDamageValue(stack) == 0;
+    }
+
+    private static String durabilityText(ItemStack stack) {
+        return isFull(stack) ? "full" : String.valueOf(Items.durabilityLeft(stack));
     }
 }

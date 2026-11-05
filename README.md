@@ -61,6 +61,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 elytra autoDeploy on/off` | on | Reopens the elytra while falling |
 | `pitch40 elytra replace on/off` | on | Swaps in a spare elytra when the worn one runs low |
 | `pitch40 elytra replace durability <n>` | 10 | Durability left at which it's replaced (minimum 2) |
+| `pitch40 elytras` | | Lists your elytras by durability: the worn one, then spares grouped like `9x full`, `4x 300`, `1x 160`. Spares too low to swap to are marked |
+| `pitch40 elytra minSpare <n>` | 10 | A spare needs at least this much durability before the bot will swap to it (and always more than the replace durability) |
 | `pitch40 elytra last on/off` | on | Disconnects as soon as it swaps onto its last elytra, so you keep one full elytra to fly home with. Needs at least one spare to start with. AutoReconnect is cancelled too unless `autoLog cancelReconnect` is off |
 | `pitch40 elytra warning <n>` | 20 | Warns at this durability when there's no spare left |
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
