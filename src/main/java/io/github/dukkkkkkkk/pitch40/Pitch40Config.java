@@ -20,6 +20,7 @@ public class Pitch40Config {
     public final Elytra elytra = new Elytra();
     public final ChestSwap chestSwap = new ChestSwap();
     public final AutoLog autoLog = new AutoLog();
+    public final Launch launch = new Launch();
     public final CoordReport coordReport = new CoordReport();
     public final WhisperReply whisperReply = new WhisperReply();
 
@@ -93,6 +94,15 @@ public class Pitch40Config {
         public double blocksBelowLowerBound = 40.0;
         /** Stop AutoReconnect from logging straight back in afterwards. */
         public boolean cancelReconnect = true;
+    }
+
+    public static final class Launch {
+        /** After the proxy connects, take off and rocket up to the upper bound, then start Pitch40. */
+        public boolean enabled = true;
+        /** Seconds to wait after connecting before taking off, so the world around the bot has loaded. */
+        public int delaySeconds = 5;
+        /** Degrees above level to climb at while rocketing up (10-90). */
+        public float pitch = 60.0f;
     }
 
     public static final class CoordReport {

@@ -13,6 +13,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
   - `boost`: as `keep`, plus a rocket every few climbs for speed
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
 - **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low
+- **Auto launch**: after the proxy connects, it takes off by itself and rockets up to the upper height, then starts flying
 - **Auto deploy**: reopens the elytra if the glide drops out mid-air
 - **Auto log**: disconnects if a flight sinks too far under the lower height, and stops AutoReconnect logging back in
 - **Daily coords**: posts the bot's position, dimension and distance travelled to Discord (and the terminal) every 24 hours
@@ -28,9 +29,9 @@ Requires the `java` ZenithProxy release channel (plugins aren't supported on `li
 
 ## Using it
 
-1. Start gliding at or above the upper height (with the ceiling off, 40 above the lower height). If you're carrying rockets, you can start anywhere
-2. Run `pitch40 on`
-3. Disconnect. The bot only flies while no player is controlling the proxy
+1. Run `pitch40 on`
+2. Either connect the proxy with the bot standing somewhere with open sky above, wearing an elytra and carrying rockets: it waits 5 seconds, takes off and rockets up to the upper height on its own. Or start gliding yourself at or above the upper height (with the ceiling off, 40 above the lower height; anywhere if you're carrying rockets)
+3. Disconnect from the proxy. The bot only flies while no player is controlling it
 
 It pauses while ZenithProxy's own pathfinder is active, stops when it lands, and disconnects if it sinks too far under the lower height (see `autoLog`).
 
@@ -59,6 +60,10 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |
+| `pitch40 launch on/off` | on | After the proxy connects, takes off and rockets up to the upper height. Only when no player is logged into the proxy |
+| `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |
+| `pitch40 launch pitch <degrees>` | 60 | How steeply it climbs while rocketing up (10-90 degrees above level) |
+| `pitch40 launch delay <seconds>` | 5 | Wait after connecting before taking off, so the world has loaded |
 | `pitch40 autoLog on/off` | on | Disconnects if the bot sinks too far under the lower height mid-flight |
 | `pitch40 autoLog below <blocks>` | 40 | How far under the lower height it can sink first. With bounds 360-420 that's Y 320. The emergency rockets fire at 10 and 30 under, so they get a chance first |
 | `pitch40 autoLog cancelReconnect on/off` | on | Stops AutoReconnect logging straight back in afterwards |
@@ -85,6 +90,8 @@ The lower height still works as a floor: it always climbs there, and the emergen
 
 The coords report is timed from the last one sent, and that time is saved, so restarts don't reset it. If the proxy was offline when one was due, it goes out as soon as it's back in game. If ZenithProxy's `discord reportCoords` setting is off, the coordinates only go to the terminal.
 
+Auto launch won't take off if there's no elytra on, no rockets, a block within 4 above the bot's head, or the upper height is above the nether roof while the bot is under it. It gives up and warns if the elytra won't open after 3 jumps, it runs out of rockets, or it hasn't reached the height after 90 seconds. It uses rockets even if the rocket mode is `off`.
+
 Replies only go to players on ZenithProxy's whitelist (`whitelist add <name>`), matched by UUID, since they can already log into the proxy and see where it is. Anyone else is ignored (whispers from them are logged to the terminal). Replies are always whispers, even when the keyword was said in public chat, so the coords never go to public chat. Each player can get one reply every 5 seconds.
 
 Settings are saved in `plugins/config/pitch40.json`. Stop ZenithProxy before editing the file by hand. The rocket hotbar slot (`rockets.hotbarSlot`, default 8) can only be changed there, and only takes effect after a restart.
@@ -110,6 +117,7 @@ src/main/java/io/github/dukkkkkkkk/pitch40/
 │   ├── ElytraManager.java   durability checks and spare elytra replacement
 │   ├── ChestSwap.java       the chest swap packets
 │   ├── AutoLog.java         disconnects if a flight sinks too low
+│   ├── Launcher.java        takes off and rockets up after connecting
 │   └── CoordsModule.java    daily coords report and whisper replies
 └── util/
     ├── Items.java           item checks and inventory slot lookups

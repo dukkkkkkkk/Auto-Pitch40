@@ -1,12 +1,15 @@
 package io.github.dukkkkkkkk.pitch40.module;
 
 import com.github.rfresh2.EventConsumer;
+import com.zenith.Proxy;
 import com.zenith.event.client.ClientBotTick;
+import com.zenith.event.client.ClientOnlineEvent;
 import com.zenith.event.module.AutoReconnectDecisionEvent;
 import com.zenith.feature.player.ClickResult;
 import com.zenith.feature.player.ClickTarget;
 import com.zenith.feature.player.Input;
 import com.zenith.feature.player.InputRequest;
+import com.zenith.feature.player.InputRequestFuture;
 import com.zenith.mc.dimension.DimensionData;
 import com.zenith.module.impl.AbstractInventoryModule;
 import com.zenith.util.RequestFuture;
@@ -37,6 +40,9 @@ import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
  *   <li>otherwise rockets only fire while climbing, and only when they add speed along the look direction</li>
  * </ul>
  *
+ * <p>With launch on, it also takes off by itself after the proxy connects and rockets up to the upper bound
+ * ({@link Launcher}).
+ *
  * <p>Only runs while no player is controlling the proxy, and pauses while ZenithProxy's pathfinder is active.
  */
 public class Pitch40Module extends AbstractInventoryModule {
@@ -61,6 +67,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     private final ElytraManager elytra = new ElytraManager(this);
     private final ChestSwap chestSwap;
     private final AutoLog autoLog = new AutoLog(this);
+    private final Launcher launcher = new Launcher(this);
 
     /** A Pitch40 cycle is running. Cleared on landing, dimension change, or disable. */
     private boolean flying = false;
@@ -109,7 +116,15 @@ public class Pitch40Module extends AbstractInventoryModule {
         return List.of(
             of(ClientBotTick.class, this::onTick),
             of(ClientBotTick.Starting.class, e -> reset()),
-            of(ClientBotTick.Stopped.class, e -> reset()),
+            of(ClientBotTick.Stopped.class, e -> {
+                reset();
+                // a player took over (or we disconnected): don't launch when they leave later
+                launcher.cancel();
+            }),
+            of(ClientOnlineEvent.class, e -> {
+                // only when the bot is in control; never surprise a player who is logged in
+                if (CONFIG.launch.enabled && !Proxy.getInstance().hasActivePlayer()) launcher.arm();
+            }),
             of(AutoReconnectDecisionEvent.class, autoLog::onAutoReconnectDecision)
         );
     }
@@ -122,6 +137,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     @Override
     public void onDisable() {
         reset();
+        launcher.cancel();
     }
 
     // ---- tick ----
@@ -143,6 +159,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             cycle.reset();
             return;
         }
+        if (launcher.active() && launcher.tick()) return;
         if (BOT.isOnGround()) {
             if (flying) info("Landed, Pitch40 stopped");
             endFlight();
@@ -333,18 +350,48 @@ public class Pitch40Module extends AbstractInventoryModule {
         String reason = !cycle.needsRocket ? "under the floor"
             : cycle.rocketForBoost ? "for the boost"
             : "to hold the corridor";
-        future.addInputExecutedListener(f -> {
-            boolean used = f.getClickResult() instanceof ClickResult.RightClickResult rightClick
-                && rightClick.getType() == ClickResult.RightClickResult.RightClickType.USE_ITEM;
-            if (!used) {
-                rocketCooldown = CLICK_REJECTED_RETRY_TICKS;
-                return;
-            }
-            rockets.fired();
-            cycle.needsRocket = false;
-            debug("Rocket {} {} at Y {}, pitch {}", rockets.firedCount(), reason, (int) BOT.getY(), (int) BOT.getPitch());
-        });
+        future.addInputExecutedListener(f -> onRocketClickExecuted(f, reason));
         return true;
+    }
+
+    /**
+     * Sends one tick of launch input for {@link Launcher}.
+     *
+     * @param climb point up at the launch pitch
+     * @param jump  hold jump this tick
+     * @param rocket fire a rocket if none is already boosting
+     */
+    void submitLaunchInput(boolean climb, boolean jump, boolean rocket) {
+        Input click = rocket && rocketCooldown == 0 && !rockets.inFlight() ? rocketClick(true) : null;
+        Input input = click != null ? click : Input.builder().jumping(jump).build();
+        var request = InputRequest.builder()
+            .owner(this)
+            .input(input)
+            .priority(getPriority());
+        if (climb) {
+            pitch = Launcher.climbPitch();
+            request.pitch(pitch);
+        }
+        if (CONFIG.corridor.lockYaw) request.yaw(CONFIG.corridor.yaw);
+        var future = INPUTS.submit(request.build());
+        if (click != null) future.addInputExecutedListener(f -> onRocketClickExecuted(f, "to launch"));
+    }
+
+    private void onRocketClickExecuted(InputRequestFuture future, String reason) {
+        boolean used = future.getClickResult() instanceof ClickResult.RightClickResult rightClick
+            && rightClick.getType() == ClickResult.RightClickResult.RightClickType.USE_ITEM;
+        if (!used) {
+            rocketCooldown = CLICK_REJECTED_RETRY_TICKS;
+            return;
+        }
+        rockets.fired();
+        cycle.needsRocket = false;
+        debug("Rocket {} {} at Y {}, pitch {}", rockets.firedCount(), reason, (int) BOT.getY(), (int) BOT.getPitch());
+    }
+
+    /** Schedule a launch to the upper bound. Runs once the bot is in control. */
+    public void launchNow() {
+        launcher.arm(true);
     }
 
     // ---- status ----
@@ -368,6 +415,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     public String status() {
         if (!isEnabled()) return "off";
         if (BARITONE.isActive()) return "paused (pathfinder active)";
+        if (launcher.active()) return launcher.describe();
         if (!flying) return "waiting for a glide";
         var status = new StringBuilder()
             .append(pitchingDown ? "diving" : "climbing")

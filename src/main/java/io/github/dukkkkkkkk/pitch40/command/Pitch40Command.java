@@ -55,6 +55,9 @@ public class Pitch40Command extends Command {
 
                 Auto log disconnects if a flight sinks too far under the lower bound.
 
+                Launch: after the proxy connects, the bot takes off and rockets up to the upper bound,
+                then starts Pitch40. Needs an elytra on, rockets, and open sky above.
+
                 Coords posts the bot's position to Discord and the terminal every intervalHours (default 24).
                 Whisper the bot "eta" or "current" (or say it in public chat) and it whispers its position back.
                 Whitelisted players only.
@@ -81,6 +84,10 @@ public class Pitch40Command extends Command {
                 "chestSwap on/off",
                 "chestSwap interval <ticks>",
                 "chestSwap slot <hotbar slot 0-8>",
+                "launch on/off",
+                "launch now",
+                "launch pitch <degrees up>",
+                "launch delay <seconds>",
                 "autoLog on/off",
                 "autoLog below <blocks under the lower bound>",
                 "autoLog cancelReconnect on/off",
@@ -133,6 +140,7 @@ public class Pitch40Command extends Command {
             .then(rocketCommands())
             .then(elytraCommands())
             .then(chestSwapCommands())
+            .then(launchCommands())
             .then(autoLogCommands())
             .then(coordsCommands())
             .then(whisperCommands())
@@ -300,6 +308,43 @@ public class Pitch40Command extends Command {
             })));
     }
 
+    private LiteralArgumentBuilder<CommandContext> launchCommands() {
+        return literal("launch")
+            .then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.launch.enabled = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Launch " + toggleStrCaps(CONFIG.launch.enabled))
+                    .description(CONFIG.launch.enabled
+                        ? "After connecting, the bot takes off and rockets up to Y " + (int) CONFIG.corridor.upperBound
+                        : "The bot has to be gliding before Pitch40 starts");
+            }))
+            .then(literal("now").executes(c -> {
+                if (!CONFIG.enabled) {
+                    c.getSource().getEmbed()
+                        .title("Error")
+                        .description("Turn Pitch40 on first: `pitch40 on`");
+                    return ERROR;
+                }
+                MODULE.get(Pitch40Module.class).launchNow();
+                c.getSource().getEmbed()
+                    .title("Launching")
+                    .description(Proxy.getInstance().hasActivePlayer()
+                        ? "Takes off once you disconnect from the proxy (within 2 minutes)"
+                        : "Taking off to Y " + (int) CONFIG.corridor.upperBound);
+                return OK;
+            }))
+            .then(literal("pitch").then(argument("degrees", floatArg(10f, 90f)).executes(c -> {
+                CONFIG.launch.pitch = getFloat(c, "degrees");
+                c.getSource().getEmbed()
+                    .title("Launch Pitch Set");
+            })))
+            .then(literal("delay").then(argument("seconds", integer(0, 120)).executes(c -> {
+                CONFIG.launch.delaySeconds = getInteger(c, "seconds");
+                c.getSource().getEmbed()
+                    .title("Launch Delay Set");
+            })));
+    }
+
     private LiteralArgumentBuilder<CommandContext> autoLogCommands() {
         return literal("autoLog")
             .then(argument("toggle", toggle()).executes(c -> {
@@ -420,6 +465,8 @@ public class Pitch40Command extends Command {
             .addField("Durability Warning", elytra.lowDurabilityWarning)
             .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | every " + chestSwap.intervalTicks
                 + " ticks | slot " + module.chestplateHotbarSlot())
+            .addField("Launch", toggleStr(CONFIG.launch.enabled) + " | to Y " + (int) CONFIG.corridor.upperBound
+                + " | " + Math.round(CONFIG.launch.pitch) + " deg up | " + CONFIG.launch.delaySeconds + "s after connecting")
             .addField("Auto Log", toggleStr(CONFIG.autoLog.enabled)
                 + " | under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound)
                 + " (" + CONFIG.autoLog.blocksBelowLowerBound + " below the lower bound)"
