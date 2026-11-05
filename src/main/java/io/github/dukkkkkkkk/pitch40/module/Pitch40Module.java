@@ -206,6 +206,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             BOT.getVelocity().getY(),
             CONFIG.rockets.mode,
             CONFIG.corridor.ceiling ? CONFIG.corridor.upperBound : GlideCycle.NO_CEILING,
+            CONFIG.corridor.climbGain,
             CONFIG.rockets.heightTolerance,
             CONFIG.rockets.climbsPerRocket
         );

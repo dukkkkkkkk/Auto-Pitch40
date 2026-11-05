@@ -36,6 +36,12 @@ public class Pitch40Config {
         public boolean ceiling = true;
         /** No ceiling only: how far under the last peak each dive goes before climbing again. */
         public double diveDepth = 60.0;
+        /**
+         * No ceiling only: each climb aims this many blocks above the best peak so far. A climb that falls more
+         * than heightTolerance short gets a rocket on the next one, so the bot keeps gaining height. 0 just holds
+         * the best height. Needs rockets on (keep or boost).
+         */
+        public double climbGain = 20.0;
         /** Degrees of pitch change per tick while swinging between -40 and +40. */
         public float rotationSpeed = 4.0f;
         /**

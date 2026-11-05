@@ -50,6 +50,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 bounds <lower> <upper>` | 360 420 | Climbs below `lower`, dives above `upper` |
 | `pitch40 lower <y>` | 360 | Sets just the lower height |
 | `pitch40 ceiling on/off` | on | Off removes the upper height (see below) |
+| `pitch40 climbGain <blocks>` | 20 | With the ceiling off: each climb aims this far above the best peak so far, and a climb that falls short gets a rocket next time, so it keeps climbing. 0 just holds the best height |
 | `pitch40 diveDepth <blocks>` | 60 | With the ceiling off: how far under each peak it dives before climbing again |
 | `pitch40 stayInBounds on/off` | on | Learns how far it overshoots each turn and turns that much earlier, so it really stays between the bounds (60 block dives with 360-420). Off, it rises about 24 blocks past the upper bound before diving (about 90 block dives) but averages about 10% faster |
 | `pitch40 rotationSpeed <degrees>` | 4 | Pitch change per tick |
@@ -93,8 +94,10 @@ Run `pitch40` on its own to see the current settings and what the bot is doing.
 
 `pitch40 ceiling off` removes the upper height. Each climb runs until it tops out, then the bot dives `diveDepth` blocks under that peak and climbs again. Rockets are measured against the best peak so far instead of the upper height:
 
-- `keep` holds the highest point it has reached
-- `boost` adds a rocket every climb (or every `climbsPerRocket`), so each peak is higher than the last and it keeps gaining height
+- `keep` aims each climb `climbGain` (default 20) blocks above the best peak so far, and fires a rocket on the next climb when one falls short. In a simulation that's about one rocket every other climb and about 34 blocks gained per climb. Set `climbGain` to 0 to just hold the best height
+- `boost` also adds a rocket every climb (or every `climbsPerRocket`)
+
+Pitch40 on its own (rockets off) gains a few blocks per climb.
 
 The lower height still works as a floor: it always climbs there, and the emergency rockets and auto log still go off it. If you're flying far above it, raise it with `pitch40 lower <y>` so auto log triggers before a long fall.
 

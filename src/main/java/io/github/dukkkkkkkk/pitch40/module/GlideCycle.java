@@ -7,7 +7,8 @@ import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
  *
  * <p>After each climb tops out, a rocket is wanted if the peak fell more than {@code tolerance}
  * under the target height (KEEP and BOOST), or if it is a boost turn (BOOST, every Nth climb).
- * The target is the upper bound, or with no ceiling the highest peak reached so far this flight.
+ * The target is the upper bound, or with no ceiling {@code climbGain} blocks above the highest peak so far,
+ * so each climb aims higher than the last.
  */
 final class GlideCycle {
     static final double VELOCITY_DEADBAND = 0.02;
@@ -59,10 +60,12 @@ final class GlideCycle {
     /**
      * Feed one tick of flight.
      *
-     * @param ceiling the upper bound, or {@link #NO_CEILING}
+     * @param ceiling   the upper bound, or {@link #NO_CEILING}
+     * @param climbGain no ceiling only: how far above the best peak each climb should reach
      * @return true when a climb just topped out short of the target height
      */
-    boolean sample(double y, double velocityY, RocketMode mode, double ceiling, double tolerance, int climbsPerRocket) {
+    boolean sample(double y, double velocityY, RocketMode mode, double ceiling, double climbGain,
+                   double tolerance, int climbsPerRocket) {
         toppedOut = false;
         if (!Double.isFinite(y) || !Double.isFinite(velocityY) || Double.isInfinite(ceiling)
             || !Double.isFinite(tolerance) || tolerance < 0.0 || climbsPerRocket < 1) {
@@ -90,8 +93,8 @@ final class GlideCycle {
 
         toppedOut = true;
         climbs++;
-        // with no ceiling, measure against the best peak before this one; the first climb sets it
-        double target = Double.isNaN(ceiling) ? bestPeakY : ceiling;
+        // with no ceiling, aim climbGain above the best peak before this one; the first climb sets it
+        double target = Double.isNaN(ceiling) ? bestPeakY + Math.max(0.0, climbGain) : ceiling;
         lastPeakY = peakY;
         bestPeakY = Double.isNaN(bestPeakY) ? peakY : Math.max(bestPeakY, peakY);
 

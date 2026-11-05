@@ -71,6 +71,7 @@ public class Pitch40Command extends Command {
                 "lower <y>",
                 "ceiling on/off",
                 "diveDepth <blocks>",
+                "climbGain <blocks>",
                 "stayInBounds on/off",
                 "rotationSpeed <degrees per tick>",
                 "yaw <degrees>/off",
@@ -126,6 +127,7 @@ public class Pitch40Command extends Command {
             .then(lowerCommand())
             .then(ceilingCommand())
             .then(diveDepthCommand())
+            .then(climbGainCommand())
             .then(literal("stayInBounds").then(argument("toggle", toggle()).executes(c -> {
                 CONFIG.corridor.stayInBounds = getToggle(c, "toggle");
                 c.getSource().getEmbed()
@@ -227,6 +229,22 @@ public class Pitch40Command extends Command {
                 .description(CONFIG.corridor.ceiling
                     ? "Climbs stop at Y " + CONFIG.corridor.upperBound
                     : "No height limit: dives " + CONFIG.corridor.diveDepth + " blocks under each peak");
+        }));
+    }
+
+    private LiteralArgumentBuilder<CommandContext> climbGainCommand() {
+        return literal("climbGain").then(argument("blocks", doubleArg(0, 500)).executes(c -> {
+            CONFIG.corridor.climbGain = getDouble(c, "blocks");
+            String note = CONFIG.rockets.mode == RocketMode.OFF
+                ? "Rockets are off, so it can't climb any faster than Pitch40 does on its own. Turn them on with `pitch40 rockets keep`"
+                : CONFIG.corridor.ceiling
+                    ? "Only used with the ceiling off: `pitch40 ceiling off`"
+                    : CONFIG.corridor.climbGain > 0
+                        ? "Each climb aims " + CONFIG.corridor.climbGain + " blocks above the best peak, using a rocket when it falls short"
+                        : "Holds the best height reached instead of climbing";
+            c.getSource().getEmbed()
+                .title("Climb Gain Set")
+                .description(note);
         }));
     }
 
@@ -505,7 +523,8 @@ public class Pitch40Command extends Command {
             .addField("Status", module.status())
             .addField("Bounds", corridor.ceiling
                 ? corridor.lowerBound + " - " + corridor.upperBound
-                : corridor.lowerBound + " - no ceiling | dives " + corridor.diveDepth + " under each peak")
+                : corridor.lowerBound + " - no ceiling | dives " + corridor.diveDepth + " under each peak"
+                    + " | climbs " + corridor.climbGain + " higher each time")
             .addField("Rotation Speed", corridor.rotationSpeed + " deg/tick")
             .addField("Stay In Bounds", toggleStr(corridor.stayInBounds))
             .addField("Heading", !corridor.lockYaw ? "current heading"
