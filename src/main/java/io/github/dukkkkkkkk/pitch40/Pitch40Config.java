@@ -126,7 +126,7 @@ public class Pitch40Config {
     public static final class WhisperReply {
         /** Whisper the position back to whitelisted players who whisper one of the keywords. */
         public boolean enabled = true;
-        /** Whole-message matches, not case sensitive. */
+        /** Matched as whole words anywhere in the message, not case sensitive. */
         public List<String> keywords = new ArrayList<>(List.of("eta", "current"));
         /** Also answer a keyword said in public chat. The answer is still a whisper. */
         public boolean publicChat = true;

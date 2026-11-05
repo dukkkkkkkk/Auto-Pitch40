@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 
 import static com.github.rfresh2.EventConsumer.of;
 import static com.zenith.Globals.*;
@@ -46,6 +47,7 @@ public class CoordsModule extends Module {
     /** Per player, so a burst of whispers can't get the bot kicked for chat spam. */
     private static final Duration WHISPER_COOLDOWN = Duration.ofSeconds(5);
     private static final int ANTI_SPAM_LENGTH = 5;
+    private static final Pattern WORD_SPLIT = Pattern.compile("[^\\p{L}\\p{N}]+");
     private static final String ANTI_SPAM_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
     private final Timer checkTimer = Timers.tickTimer();
@@ -180,11 +182,20 @@ public class CoordsModule extends Module {
         return tag.toString();
     }
 
-    private static boolean isKeyword(String message) {
+    /**
+     * True if any keyword appears in the message as a whole word, in any case. Clients often add text around a
+     * message ("> current | Hackware [a7a25b9f]"), so anything that isn't a letter or digit splits words.
+     * Whole words only: "eta" doesn't match "beta", "current" doesn't match "currently".
+     */
+    static boolean isKeyword(@Nullable String message) {
         if (message == null) return false;
-        String word = message.trim().toLowerCase(Locale.ROOT);
+        String[] words = WORD_SPLIT.split(message.toLowerCase(Locale.ROOT));
         for (String keyword : CONFIG.whisperReply.keywords) {
-            if (word.equals(keyword.trim().toLowerCase(Locale.ROOT))) return true;
+            String wanted = keyword.trim().toLowerCase(Locale.ROOT);
+            if (wanted.isEmpty()) continue;
+            for (String word : words) {
+                if (word.equals(wanted)) return true;
+            }
         }
         return false;
     }

@@ -59,7 +59,8 @@ public class Pitch40Command extends Command {
                 then starts Pitch40. Needs an elytra on, rockets, and open sky above.
 
                 Coords posts the bot's position to Discord and the terminal every intervalHours (default 24).
-                Whisper the bot "eta" or "current" (or say it in public chat) and it whispers its position back.
+                Whisper the bot a message with "eta" or "current" in it (or say it in public chat) and it whispers
+                its position back.
                 Whitelisted players only.
 
                 Only runs while no player is controlling the proxy, and pauses while the pathfinder is active.

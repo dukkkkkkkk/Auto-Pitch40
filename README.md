@@ -77,7 +77,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 coords interval <hours>` | 24 | Hours between reports |
 | `pitch40 coords now` | | Sends a report straight away and restarts the timer |
 | `pitch40 whisper on/off` | on | Whispers the position back when a whitelisted player whispers a keyword |
-| `pitch40 whisper add <keyword>` | eta, current | Adds a keyword. The whole whisper has to be the keyword, in any case |
+| `pitch40 whisper add <keyword>` | eta, current | Adds a keyword. It can be anywhere in the message as a whole word, in any case, so client prefixes and suffixes like `> current \| Hackware [a7a25b9f]` still work. `eta` doesn't match inside `beta` |
 | `pitch40 whisper remove <keyword>` | | Removes a keyword |
 | `pitch40 whisper publicChat on/off` | on | Also answers a keyword said in public chat. The reply is still a whisper |
 | `pitch40 whisper antiSpam on/off` | on | Adds a random tag like `[s2o9f]` to each reply so the server's spam filter doesn't drop repeats |
