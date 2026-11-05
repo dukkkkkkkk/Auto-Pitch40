@@ -71,6 +71,11 @@ public class Pitch40Config {
         public boolean autoReplace = true;
         /** Durability left at which the worn elytra is replaced. Minimum 2; an elytra stops working at 1. */
         public int replaceDurability = 10;
+        /**
+         * Disconnect as soon as the bot swaps onto its last elytra, so you keep one full elytra to fly home with.
+         * Needs autoReplace and at least one spare to start with.
+         */
+        public boolean lastElytra = true;
         /** Warn when the worn elytra is this low and there is no spare to replace it. */
         public int lowDurabilityWarning = 20;
     }

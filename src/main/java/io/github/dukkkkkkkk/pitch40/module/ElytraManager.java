@@ -23,6 +23,9 @@ final class ElytraManager {
     private final Notice noElytra = new Notice();
     private final Notice lowDurability = new Notice();
     private final Notice noSpare = new Notice();
+    private final Notice noSpareForLastElytra = new Notice();
+    /** A replacement was submitted and hasn't been checked for "last elytra" yet. */
+    private boolean replacedSinceCheck = false;
 
     ElytraManager(Pitch40Module module) {
         this.module = module;
@@ -49,6 +52,45 @@ final class ElytraManager {
         return durability > 1;
     }
 
+    /**
+     * True once a replacement this module made has finished and no usable spare is left, i.e. the bot just
+     * swapped onto its last elytra, which is still fresh. Only replacements count, so items flicking through
+     * the inventory (like the chest swap) can't set it off.
+     */
+    boolean reachedLastElytra() {
+        int threshold = replaceThreshold();
+        if (!replacedSinceCheck) {
+            if (usableSpareCount(threshold) == 0) {
+                if (noSpareForLastElytra.show()) {
+                    module.info("Last elytra is on, but there's no spare elytra, so it won't disconnect");
+                }
+            } else {
+                noSpareForLastElytra.clear();
+            }
+            return false;
+        }
+        // wait for the swap clicks to finish and the inventory to settle
+        if (busy() || !Items.inventoryIdle()) return false;
+        replacedSinceCheck = false;
+        var chest = Items.chest();
+        boolean wearingFresh = Items.isElytra(chest) && Items.durabilityLeft(chest) > threshold;
+        return wearingFresh && usableSpareCount(threshold) == 0;
+    }
+
+    /** Spares in the inventory with more durability than the replace threshold. */
+    private int usableSpareCount(int threshold) {
+        int count = 0;
+        for (int slot = Items.MAIN_START; slot <= Items.HOTBAR_END; slot++) {
+            var stack = Items.slot(slot);
+            if (Items.isElytra(stack) && Items.durabilityLeft(stack) > threshold) count++;
+        }
+        return count;
+    }
+
+    private static int replaceThreshold() {
+        return Math.max(MIN_REPLACE_DURABILITY, CONFIG.elytra.replaceDurability);
+    }
+
     /** An elytra replacement is still being clicked through. */
     boolean busy() {
         return !replaceFuture.isCompleted();
@@ -65,6 +107,8 @@ final class ElytraManager {
 
     void reset() {
         replaceFuture = RequestFuture.rejected;
+        replacedSinceCheck = false;
+        noSpareForLastElytra.clear();
         noElytra.clear();
         lowDurability.clear();
         noSpare.clear();
@@ -80,7 +124,7 @@ final class ElytraManager {
     private void tryReplace(@Nullable ItemStack chest) {
         if (busy()) return;
         if (chest != null && !Items.isElytra(chest)) return;
-        int threshold = Math.max(MIN_REPLACE_DURABILITY, CONFIG.elytra.replaceDurability);
+        int threshold = replaceThreshold();
         if (chest != null && Items.durabilityLeft(chest) > threshold) {
             noSpare.clear();
             return;
@@ -101,6 +145,7 @@ final class ElytraManager {
         // still pending means it was queued; completed but not accepted means another module outranked us
         if (!replaceFuture.isCompleted() || replaceFuture.isAccepted()) {
             module.info("Replacing elytra with a spare ({} durability)", spareDurability);
+            replacedSinceCheck = true;
         }
     }
 

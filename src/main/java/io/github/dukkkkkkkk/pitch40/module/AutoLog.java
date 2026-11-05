@@ -38,8 +38,13 @@ final class AutoLog {
         double trigger = triggerY();
         if (y >= trigger) return false;
         module.warn("Y {} is under the auto log height ({}), disconnecting", (int) y, (int) trigger);
-        Proxy.getInstance().disconnect(REASON_PREFIX + "Fell to Y " + (int) y + ", under the auto log height " + (int) trigger);
+        disconnect("Fell to Y " + (int) y + ", under the auto log height " + (int) trigger);
         return true;
+    }
+
+    /** Disconnects with a reason marked as ours, so {@link #onAutoReconnectDecision} can cancel the reconnect. */
+    void disconnect(String reason) {
+        Proxy.getInstance().disconnect(REASON_PREFIX + reason);
     }
 
     /** Stops AutoReconnect logging straight back in after one of our disconnects. */

@@ -80,6 +80,7 @@ public class Pitch40Command extends Command {
                 "elytra autoDeploy on/off",
                 "elytra replace on/off",
                 "elytra replace durability <durability>",
+                "elytra last on/off",
                 "elytra warning <durability>",
                 "chestSwap on/off",
                 "chestSwap interval <ticks>",
@@ -276,6 +277,14 @@ public class Pitch40Command extends Command {
                     c.getSource().getEmbed()
                         .title("Replace Durability Set");
                 }))))
+            .then(literal("last").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.elytra.lastElytra = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Last Elytra " + toggleStrCaps(CONFIG.elytra.lastElytra))
+                    .description(CONFIG.elytra.lastElytra
+                        ? "Disconnects when it swaps onto the last elytra, keeping that one full"
+                        : "Keeps flying on the last elytra until it runs low");
+            })))
             .then(literal("warning").then(argument("durability", integer(0, 432)).executes(c -> {
                 CONFIG.elytra.lowDurabilityWarning = getInteger(c, "durability");
                 c.getSource().getEmbed()
@@ -465,6 +474,7 @@ public class Pitch40Command extends Command {
             .addField("Auto Deploy", toggleStr(elytra.autoDeploy))
             .addField("Elytra Replace", toggleStr(elytra.autoReplace) + " at " + elytra.replaceDurability
                 + " | " + module.spareElytraCount() + " spares")
+            .addField("Last Elytra", toggleStr(elytra.lastElytra) + (elytra.lastElytra ? " | disconnects on the last full elytra" : ""))
             .addField("Durability Warning", elytra.lowDurabilityWarning)
             .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | every " + chestSwap.intervalTicks
                 + " ticks | slot " + module.chestplateHotbarSlot())

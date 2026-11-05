@@ -13,6 +13,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
   - `boost`: as `keep`, plus a rocket every few climbs for speed
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
 - **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low
+- **Last elytra**: disconnects as soon as it's down to its last elytra, so that one stays full for the trip home
 - **Auto launch**: after the proxy connects, it takes off by itself and rockets up to the upper height, then starts flying
 - **Auto deploy**: reopens the elytra if the glide drops out mid-air
 - **Auto log**: disconnects if a flight sinks too far under the lower height, and stops AutoReconnect logging back in
@@ -60,6 +61,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 elytra autoDeploy on/off` | on | Reopens the elytra while falling |
 | `pitch40 elytra replace on/off` | on | Swaps in a spare elytra when the worn one runs low |
 | `pitch40 elytra replace durability <n>` | 10 | Durability left at which it's replaced (minimum 2) |
+| `pitch40 elytra last on/off` | on | Disconnects as soon as it swaps onto its last elytra, so you keep one full elytra to fly home with. Needs at least one spare to start with. AutoReconnect is cancelled too unless `autoLog cancelReconnect` is off |
 | `pitch40 elytra warning <n>` | 20 | Warns at this durability when there's no spare left |
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |

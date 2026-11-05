@@ -185,6 +185,13 @@ public class Pitch40Module extends AbstractInventoryModule {
             cycle.reset();
             return;
         }
+        if (CONFIG.elytra.lastElytra && elytra.reachedLastElytra()) {
+            warn("Swapped onto the last elytra, disconnecting to keep it full");
+            // no coords in the reason: it shows in Discord even when reportCoords is off
+            autoLog.disconnect("Swapped onto the last elytra, disconnected to keep it full");
+            endFlight();
+            return;
+        }
         if (!BOT.isFallFlying()) {
             cycle.reset();
             deployElytra();
