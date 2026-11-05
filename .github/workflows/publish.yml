@@ -1,7 +1,21 @@
 name: Publish Plugin
 
+# Every push to main builds the plugin and puts the jar on the GitHub release for the current
+# plugin_version (from gradle.properties). The same version's release is updated in place, so it always
+# has the newest jar; bump plugin_version to start a new release.
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+# a newer push replaces an in-progress publish instead of racing it
+concurrency:
+  group: publish
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -38,11 +52,24 @@ jobs:
           if-no-files-found: error
 
       - name: Get Plugin Version
-        run: echo "PLUGIN_VERSION=$(grep '^plugin_version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_ENV
+        run: |
+          echo "PLUGIN_VERSION=$(grep '^plugin_version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_ENV
+          echo "BUILT_AT=$(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_ENV
 
       - name: Publish Plugin Github Release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.PLUGIN_VERSION }}
+          name: Auto-Pitch40 ${{ env.PLUGIN_VERSION }}
+          commit: ${{ github.sha }}
           artifacts: build/libs/*.jar
-          generateReleaseNotes: true
+          body: |
+            Download the jar below and put it in the `plugins` folder next to the ZenithProxy launcher, then restart ZenithProxy.
+
+            Latest build: ${{ env.BUILT_AT }} from ${{ github.sha }}.
+            This release is updated with every push to `main`, so re-download it to update.
+          # update this version's release in place, swapping the old jar for the new one
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          makeLatest: true

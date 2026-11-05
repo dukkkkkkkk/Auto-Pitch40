@@ -1,10 +1,11 @@
 name: Plugin Build
 
+# main is built by publish.yml, which also updates the release
 on:
   pull_request:
   push:
-    branches:
-      - "*"
+    branches-ignore:
+      - main
 
 jobs:
   build:

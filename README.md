@@ -22,8 +22,8 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
 
 Requires the `java` ZenithProxy release channel (plugins aren't supported on `linux`).
 
-1. Build it with `./gradlew build` (or download the jar from the latest Actions run)
-2. Put the jar from `build/libs` in the `plugins` folder next to the ZenithProxy launcher
+1. Download the jar from the [latest release](https://github.com/dukkkkkkkk/Auto-Pitch40/releases/latest) (or build it with `./gradlew build` and take it from `build/libs`)
+2. Put the jar in the `plugins` folder next to the ZenithProxy launcher
 3. Restart ZenithProxy
 
 ## Using it
