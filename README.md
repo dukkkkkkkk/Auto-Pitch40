@@ -65,6 +65,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 elytra warning <n>` | 20 | Warns at this durability when there's no spare left |
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
+| `pitch40 chestSwap pauseForRockets on/off` | on | Stops swapping while a rocket is boosting so the elytra stays on for the whole boost, then goes back to swapping |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |
 | `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the upper height |
 | `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |

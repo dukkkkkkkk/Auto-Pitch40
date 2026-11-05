@@ -87,6 +87,11 @@ public class Pitch40Config {
         public int intervalTicks = 4;
         /** Hotbar slot (0-8) a chestplate is moved into if none is in the hotbar. Never the rocket slot. */
         public int hotbarSlot = 7;
+        /**
+         * Stop swapping while a rocket is boosting, keeping the elytra on for the whole boost, then carry on.
+         * Restarting the glide mid-boost can cut it short.
+         */
+        public boolean pauseForRockets = true;
     }
 
     public static final class AutoLog {

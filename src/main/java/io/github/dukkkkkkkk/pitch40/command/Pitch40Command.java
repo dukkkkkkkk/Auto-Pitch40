@@ -86,6 +86,7 @@ public class Pitch40Command extends Command {
                 "chestSwap on/off",
                 "chestSwap interval <ticks>",
                 "chestSwap slot <hotbar slot 0-8>",
+                "chestSwap pauseForRockets on/off",
                 "launch on/off",
                 "launch now",
                 "launch pitch <degrees up>",
@@ -305,6 +306,14 @@ public class Pitch40Command extends Command {
                 c.getSource().getEmbed()
                     .title("Chest Swap Interval Set");
             })))
+            .then(literal("pauseForRockets").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.chestSwap.pauseForRockets = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Pause For Rockets " + toggleStrCaps(CONFIG.chestSwap.pauseForRockets))
+                    .description(CONFIG.chestSwap.pauseForRockets
+                        ? "Keeps the elytra on while a rocket boosts, then goes back to chest swapping"
+                        : "Keeps chest swapping during rocket boosts");
+            })))
             .then(literal("slot").then(argument("slot", integer(0, 8)).executes(c -> {
                 int slot = getInteger(c, "slot");
                 int rocketSlot = MODULE.get(Pitch40Module.class).rocketHotbarSlot();
@@ -478,7 +487,8 @@ public class Pitch40Command extends Command {
             .addField("Last Elytra", toggleStr(elytra.lastElytra) + (elytra.lastElytra ? " | disconnects on the last full elytra" : ""))
             .addField("Durability Warning", elytra.lowDurabilityWarning)
             .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | every " + chestSwap.intervalTicks
-                + " ticks | slot " + module.chestplateHotbarSlot())
+                + " ticks | slot " + module.chestplateHotbarSlot()
+                + (chestSwap.pauseForRockets ? " | pauses for rockets" : ""))
             .addField("Launch", toggleStr(CONFIG.launch.enabled) + " | to Y " + (int) CONFIG.corridor.upperBound
                 + " | " + Math.round(CONFIG.launch.pitch) + " deg up | " + CONFIG.launch.delaySeconds + "s after connecting")
             .addField("Auto Log", toggleStr(CONFIG.autoLog.enabled)

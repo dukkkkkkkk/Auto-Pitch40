@@ -210,7 +210,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         );
         steerPitch();
         boolean firingRocket = submitFlightInput(wantsRocket());
-        chestSwap.tick(!firingRocket && !sinking() && !elytra.busy() && rocketMove.isCompleted());
+        chestSwap.tick(!firingRocket && !boostingWithRocket() && !sinking() && !elytra.busy() && rocketMove.isCompleted());
     }
 
     private void checkDimension() {
@@ -300,6 +300,15 @@ public class Pitch40Module extends AbstractInventoryModule {
     private void startDive(double fromY) {
         pitchingDown = true;
         diveFromY = fromY;
+    }
+
+    /**
+     * A rocket was just fired or is still boosting us. The chest swap holds off until it's done, so the elytra stays
+     * on and the glide isn't restarted mid-boost, which would cut the boost short. Turn off {@code pauseForRockets}
+     * to keep swapping through boosts.
+     */
+    private boolean boostingWithRocket() {
+        return CONFIG.chestSwap.pauseForRockets && rockets.inFlight();
     }
 
     /** Far enough under the corridor that the glide matters more than anything else. */
@@ -449,7 +458,10 @@ public class Pitch40Module extends AbstractInventoryModule {
         if (!CONFIG.corridor.ceiling && !Double.isNaN(cycle.bestPeakY())) {
             status.append(" | best peak Y ").append(Math.round(cycle.bestPeakY()));
         }
-        if (CONFIG.chestSwap.enabled) status.append(" | chest swaps ").append(chestSwap.swapCount());
+        if (CONFIG.chestSwap.enabled) {
+            status.append(" | chest swaps ").append(chestSwap.swapCount());
+            if (boostingWithRocket()) status.append(" (paused for rocket)");
+        }
         return status.toString();
     }
 
