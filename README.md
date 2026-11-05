@@ -47,6 +47,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 diveDepth <blocks>` | 60 | With the ceiling off: how far under each peak it dives before climbing again |
 | `pitch40 rotationSpeed <degrees>` | 4 | Pitch change per tick |
 | `pitch40 yaw <degrees>/off` | off | Locks a heading, or keeps the current one |
+| `pitch40 quad set <xz>` | | Locks the heading to a quadrant or axis: X sign then Z sign. Corners `++` `+-` `-+` `--`, axes `+0` `-0` `0+` `0-`. E.g. `++` flies toward +X +Z, `0-` straight toward -Z |
+| `pitch40 quad off` | | Unlocks the heading |
 | `pitch40 rockets <off/keep/boost>` | keep | Rocket mode |
 | `pitch40 rockets heightTolerance <blocks>` | 10 | How far under the upper height a climb may top out before a rocket is spent. Higher saves rockets but flies lower |
 | `pitch40 rockets climbsPerRocket <count>` | 1 | Boost only: a rocket every Nth climb |

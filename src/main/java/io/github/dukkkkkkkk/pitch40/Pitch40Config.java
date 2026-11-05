@@ -40,6 +40,8 @@ public class Pitch40Config {
         /** Hold a fixed heading instead of keeping the current yaw. */
         public boolean lockYaw = false;
         public float yaw = 0.0f;
+        /** The quadrant the yaw was locked to with {@code pitch40 quad set}, like "++" or "0-". Empty if none. */
+        public String quad = "";
     }
 
     public static final class Rockets {

@@ -10,6 +10,7 @@ import com.zenith.discord.Embed;
 import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
 import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
+import io.github.dukkkkkkkk.pitch40.util.Quadrant;
 
 import java.time.Duration;
 import java.util.Locale;
@@ -68,6 +69,8 @@ public class Pitch40Command extends Command {
                 "diveDepth <blocks>",
                 "rotationSpeed <degrees per tick>",
                 "yaw <degrees>/off",
+                "quad set <++/+-/-+/--/+0/-0/0+/0->",
+                "quad off",
                 "rockets <off/keep/boost>",
                 "rockets heightTolerance <blocks>",
                 "rockets climbsPerRocket <count>",
@@ -115,15 +118,18 @@ public class Pitch40Command extends Command {
             .then(literal("yaw")
                 .then(literal("off").executes(c -> {
                     CONFIG.corridor.lockYaw = false;
+                    CONFIG.corridor.quad = "";
                     c.getSource().getEmbed()
                         .title("Yaw Lock Off");
                 }))
                 .then(argument("degrees", floatArg(-180f, 180f)).executes(c -> {
                     CONFIG.corridor.lockYaw = true;
                     CONFIG.corridor.yaw = getFloat(c, "degrees");
+                    CONFIG.corridor.quad = "";
                     c.getSource().getEmbed()
                         .title("Yaw Locked");
                 })))
+            .then(quadCommands())
             .then(rocketCommands())
             .then(elytraCommands())
             .then(chestSwapCommands())
@@ -189,6 +195,37 @@ public class Pitch40Command extends Command {
             c.getSource().getEmbed()
                 .title("Dive Depth Set");
         }));
+    }
+
+    /**
+     * Locks the heading to a quadrant or axis: X sign then Z sign, e.g. "++", "+0", "0-".
+     */
+    private LiteralArgumentBuilder<CommandContext> quadCommands() {
+        return literal("quad")
+            .then(literal("set").then(argument("quad", word()).executes(c -> {
+                String quad = Quadrant.parse(getString(c, "quad"));
+                if (quad == null) {
+                    c.getSource().getEmbed()
+                        .title("Error")
+                        .description("Use an X sign then a Z sign, each +, - or 0. "
+                            + "Corners: ++ +- -+ --. Axes: +0 -0 0+ 0-");
+                    return ERROR;
+                }
+                CONFIG.corridor.lockYaw = true;
+                CONFIG.corridor.yaw = Quadrant.yaw(quad);
+                CONFIG.corridor.quad = quad;
+                c.getSource().getEmbed()
+                    .title("Locked to " + quad)
+                    .description("Heading " + Quadrant.describe(quad) + ", yaw " + Math.round(CONFIG.corridor.yaw));
+                return OK;
+            })))
+            .then(literal("off").executes(c -> {
+                CONFIG.corridor.lockYaw = false;
+                CONFIG.corridor.quad = "";
+                c.getSource().getEmbed()
+                    .title("Quad Lock Off")
+                    .description("Keeping the current heading");
+            }));
     }
 
     private LiteralArgumentBuilder<CommandContext> rocketCommands() {
@@ -370,7 +407,9 @@ public class Pitch40Command extends Command {
                 ? corridor.lowerBound + " - " + corridor.upperBound
                 : corridor.lowerBound + " - no ceiling | dives " + corridor.diveDepth + " under each peak")
             .addField("Rotation Speed", corridor.rotationSpeed + " deg/tick")
-            .addField("Yaw", corridor.lockYaw ? String.valueOf(corridor.yaw) : "current heading")
+            .addField("Heading", !corridor.lockYaw ? "current heading"
+                : !corridor.quad.isEmpty() ? "quad " + corridor.quad + " " + Quadrant.describe(corridor.quad) + ", yaw " + Math.round(corridor.yaw)
+                : "yaw " + corridor.yaw)
             .addField("Rockets", rockets.mode.name().toLowerCase()
                 + " | tolerance " + rockets.heightTolerance
                 + (rockets.mode == RocketMode.BOOST ? " | every " + rockets.climbsPerRocket + " climbs" : ""))
