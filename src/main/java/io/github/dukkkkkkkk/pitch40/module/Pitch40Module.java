@@ -115,7 +115,12 @@ public class Pitch40Module extends AbstractInventoryModule {
     public List<EventConsumer<?>> registerEvents() {
         return List.of(
             of(ClientBotTick.class, this::onTick),
-            of(ClientBotTick.Starting.class, e -> reset()),
+            of(ClientBotTick.Starting.class, e -> {
+                reset();
+                // the bot just took control (connected, or a player left the proxy): take off if it's standing
+                // or gliding low. Already above the upper bound, the launch steps aside for normal flight
+                if (CONFIG.launch.enabled) launcher.arm();
+            }),
             of(ClientBotTick.Stopped.class, e -> {
                 reset();
                 // a player took over (or we disconnected): don't launch when they leave later
@@ -132,6 +137,13 @@ public class Pitch40Module extends AbstractInventoryModule {
     @Override
     public void onEnable() {
         reset();
+        // turned on while the bot is in control: launch now if needed. With a player logged in,
+        // ClientBotTick.Starting arms it when they disconnect
+        if (CONFIG.launch.enabled && botInControl()) launcher.arm(true);
+    }
+
+    private static boolean botInControl() {
+        return Proxy.getInstance().isConnected() && !Proxy.getInstance().hasActivePlayer();
     }
 
     @Override
@@ -412,11 +424,16 @@ public class Pitch40Module extends AbstractInventoryModule {
         return rocketHotbarSlot;
     }
 
+    /** What the bot is doing, or in plain words what it's waiting for. */
     public String status() {
         if (!isEnabled()) return "off";
+        if (!Proxy.getInstance().isConnected()) return "not connected to the server";
+        if (Proxy.getInstance().hasActivePlayer()) {
+            return "waiting: you're logged into the proxy, so you're in control. The bot takes over when you disconnect";
+        }
         if (BARITONE.isActive()) return "paused (pathfinder active)";
         if (launcher.active()) return launcher.describe();
-        if (!flying) return "waiting for a glide";
+        if (!flying) return idleReason();
         var status = new StringBuilder()
             .append(pitchingDown ? "diving" : "climbing")
             .append(" | pitch ").append(Math.round(pitch))
@@ -427,6 +444,19 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         if (CONFIG.chestSwap.enabled) status.append(" | chest swaps ").append(chestSwap.swapCount());
         return status.toString();
+    }
+
+    private String idleReason() {
+        if (!Items.isElytra(Items.chest())) return "waiting: no elytra in the chest slot";
+        if (BOT.isOnGround()) {
+            return CONFIG.launch.enabled
+                ? "on the ground and didn't launch (see the warning in the terminal); try `pitch40 launch now`"
+                : "on the ground: start gliding, or turn on `pitch40 launch` so it takes off by itself";
+        }
+        if (!BOT.isFallFlying()) {
+            return CONFIG.elytra.autoDeploy ? "in the air, opening the elytra" : "in the air but not gliding (autoDeploy is off)";
+        }
+        return "gliding but too low to start: get above Y " + (int) CONFIG.corridor.upperBound + " or carry rockets";
     }
 
     // ---- reset ----

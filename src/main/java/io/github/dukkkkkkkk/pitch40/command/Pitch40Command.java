@@ -109,9 +109,12 @@ public class Pitch40Command extends Command {
         return command("pitch40")
             .then(argument("toggle", toggle()).executes(c -> {
                 CONFIG.enabled = getToggle(c, "toggle");
-                MODULE.get(Pitch40Module.class).syncEnabledFromConfig();
-                c.getSource().getEmbed()
+                var module = MODULE.get(Pitch40Module.class);
+                module.syncEnabledFromConfig();
+                var embed = c.getSource().getEmbed()
                     .title("Pitch40 " + toggleStrCaps(CONFIG.enabled));
+                // say what happens next, so "nothing happened" always has an answer
+                if (CONFIG.enabled) embed.description(module.status());
             }))
             .then(boundsCommand())
             .then(lowerCommand())

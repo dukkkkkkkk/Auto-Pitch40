@@ -29,9 +29,13 @@ Requires the `java` ZenithProxy release channel (plugins aren't supported on `li
 
 ## Using it
 
-1. Run `pitch40 on`
-2. Either connect the proxy with the bot standing somewhere with open sky above, wearing an elytra and carrying rockets: it waits 5 seconds, takes off and rockets up to the upper height on its own. Or start gliding yourself at or above the upper height (with the ceiling off, 40 above the lower height; anywhere if you're carrying rockets)
-3. Disconnect from the proxy. The bot only flies while no player is controlling it
+1. Stand somewhere with open sky above, wearing an elytra and carrying rockets (or already be gliding)
+2. Run `pitch40 on`
+3. Disconnect from the proxy
+
+The bot only moves while no player is logged into the proxy. While you're connected, your client is in control and Pitch40 waits; it takes over the moment you disconnect. When it does, it takes off and rockets up to the upper height if it's standing or gliding low, then starts flying. The same happens when the proxy connects to the server.
+
+`pitch40 on` and `pitch40` both say what it's doing or waiting for, e.g. "you're logged into the proxy" or "no elytra in the chest slot".
 
 It pauses while ZenithProxy's own pathfinder is active, stops when it lands, and disconnects if it sinks too far under the lower height (see `autoLog`).
 
@@ -60,7 +64,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |
-| `pitch40 launch on/off` | on | After the proxy connects, takes off and rockets up to the upper height. Only when no player is logged into the proxy |
+| `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the upper height |
 | `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |
 | `pitch40 launch pitch <degrees>` | 60 | How steeply it climbs while rocketing up (10-90 degrees above level) |
 | `pitch40 launch delay <seconds>` | 5 | Wait after connecting before taking off, so the world has loaded |
