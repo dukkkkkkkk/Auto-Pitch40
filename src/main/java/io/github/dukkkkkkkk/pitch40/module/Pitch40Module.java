@@ -56,7 +56,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     /** Under the lower bound by this much: emergency rocket even at speed. */
     private static final double EMERGENCY_DEEP = 30.0;
     private static final double STALL_SPEED = 0.8;
-    /** No ceiling: sinking this fast (blocks/tick) while fully pitched up means the climb has failed. */
+    /** Sinking this fast (blocks/tick) while fully pitched up means the climb has failed. */
     private static final double FAILED_CLIMB_SINK = 0.1;
     /** A climbing rocket is skipped when speed along the look direction is already this high (blocks/tick). */
     private static final double ROCKET_GATE = 0.7;
@@ -272,9 +272,10 @@ public class Pitch40Module extends AbstractInventoryModule {
     /**
      * Picks dive or climb, then turns the pitch toward +40 or -40.
      *
-     * <p>With a ceiling this is Meteor's ElytraFly Pitch40 logic: dive at the upper bound, climb at the lower.
-     * With no ceiling a climb runs until it tops out, then the bot dives {@code diveDepth} blocks under that
-     * peak before climbing again. The lower bound still forces a climb either way.
+     * <p>A dive runs down to the lower bound (with no ceiling, {@code diveDepth} under the last peak if that comes
+     * first), then the bot climbs. A climb ends at the upper bound, or as soon as it tops out or stalls, whichever
+     * comes first. Without that, a climb that ran out of speed short of the upper bound would hang at -40 and sink
+     * all the way down while still "climbing". The lower bound always forces a climb.
      */
     private void steerPitch() {
         var corridor = CONFIG.corridor;
@@ -283,9 +284,10 @@ public class Pitch40Module extends AbstractInventoryModule {
             boolean atFloor = y <= corridor.lowerBound;
             boolean deepEnough = !corridor.ceiling && y <= diveFromY - corridor.diveDepth;
             if (atFloor || deepEnough) pitchingDown = false;
-        } else if (corridor.ceiling) {
-            if (y >= corridor.upperBound) startDive(y);
+        } else if (corridor.ceiling && y >= corridor.upperBound) {
+            startDive(y);
         } else if (cycle.toppedOut()) {
+            // the climb peaked short of the upper bound (or there's no ceiling): dive to rebuild speed
             startDive(cycle.lastPeakY());
         } else if (pitch <= -MAX_PITCH && BOT.getVelocity().getY() < -FAILED_CLIMB_SINK && y > corridor.lowerBound) {
             // fully pitched up but still sinking: too slow to climb, dive again to build speed
