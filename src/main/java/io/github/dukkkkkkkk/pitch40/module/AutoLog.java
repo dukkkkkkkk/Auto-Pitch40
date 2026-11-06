@@ -2,9 +2,20 @@ package io.github.dukkkkkkkk.pitch40.module;
 
 import com.zenith.Proxy;
 import com.zenith.feature.player.World;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.InteractAction;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundInteractPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerPosPacket;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 import com.zenith.event.module.AutoReconnectDecisionEvent;
 
+import static com.github.rfresh2.EventConsumer.of;
 import static com.zenith.Globals.BOT;
+import static com.zenith.Globals.CACHE;
+import static com.zenith.Globals.EVENT_BUS;
+import static com.zenith.Globals.EXECUTOR;
 import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
 
 /**
@@ -25,6 +36,12 @@ final class AutoLog {
     private static final String REASON_PREFIX = "[Pitch40] ";
     /** Disconnect when falling within this many blocks of the dimension's lowest Y. */
     static final int VOID_MARGIN = 16;
+    /** A server kick this soon after an illegal disconnect counts as ours, for the reconnect block. */
+    private static final Duration KICK_WINDOW = Duration.ofSeconds(10);
+    /** Normal disconnect this long after the illegal packets, in case the server ignored them. */
+    private static final long FALLBACK_DISCONNECT_MS = 1000L;
+    private static final Object RECONNECT_GUARD = new Object();
+    private static volatile Instant expectKickUntil = Instant.EPOCH;
     /** Falling faster than this (blocks/tick, about 8 blocks of free fall) counts as falling, not just a jump. */
     private static final double FREE_FALL_SPEED = -1.0;
 
@@ -66,19 +83,48 @@ final class AutoLog {
         return true;
     }
 
-    /** Disconnects with a reason marked as ours, so {@link #onAutoReconnectDecision} can cancel the reconnect. */
+    /** Disconnects (putting the elytra back first), the illegal way if that's on. */
     void disconnect(String reason) {
         // never log out wearing the dukway chestplate mid-air
         module.restoreElytra();
-        Proxy.getInstance().disconnect(REASON_PREFIX + reason);
+        disconnectNow(reason);
     }
 
-    /** Stops AutoReconnect logging straight back in after one of our disconnects. */
-    void onAutoReconnectDecision(AutoReconnectDecisionEvent event) {
+    /**
+     * Disconnects now. With {@code illegalDisconnect} on, sends the server things it always kicks a player for,
+     * so the server ends the session itself, with a normal disconnect a second later in case it ignores them.
+     * One illegal packet is enough; the server handles packets in order, so more wouldn't make it faster.
+     */
+    static void disconnectNow(String reason) {
+        var proxy = Proxy.getInstance();
+        if (!proxy.isConnected()) return;
+        if (!CONFIG.autoLog.illegalDisconnect) {
+            proxy.disconnect(REASON_PREFIX + reason);
+            return;
+        }
+        expectKickUntil = Instant.now().plus(KICK_WINDOW);
+        var client = proxy.getClient();
+        // attacking yourself gets "invalid_entity_attacked"...
+        client.sendAsync(new ServerboundInteractPacket(CACHE.getPlayerCache().getEntityId(), InteractAction.ATTACK, false));
+        // ...and a position that isn't a number gets "invalid_player_movement"
+        client.sendAsync(new ServerboundMovePlayerPosPacket(false, false, Double.NaN, Double.NaN, Double.NaN));
+        EXECUTOR.schedule(() -> {
+            if (Proxy.getInstance().isConnected()) Proxy.getInstance().disconnect(REASON_PREFIX + reason);
+        }, FALLBACK_DISCONNECT_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /** Call once at plugin load: blocks AutoReconnect after our disconnects, whether or not Pitch40 is on. */
+    static void registerReconnectGuard() {
+        EVENT_BUS.subscribe(RECONNECT_GUARD, of(AutoReconnectDecisionEvent.class, AutoLog::onAutoReconnectDecision));
+    }
+
+    /** Stops AutoReconnect logging straight back in after one of our disconnects, including illegal-disconnect kicks. */
+    private static void onAutoReconnectDecision(AutoReconnectDecisionEvent event) {
         if (!CONFIG.autoLog.cancelReconnect) return;
         String reason = event.getDisconnectEvent().reason();
-        if (reason != null && reason.startsWith(REASON_PREFIX)) {
-            event.setCancelled(true);
-        }
+        boolean ours = reason != null && reason.startsWith(REASON_PREFIX);
+        // an illegal disconnect comes back as a server kick, without our tag
+        boolean ourKick = Instant.now().isBefore(expectKickUntil);
+        if (ours || ourKick) event.setCancelled(true);
     }
 }

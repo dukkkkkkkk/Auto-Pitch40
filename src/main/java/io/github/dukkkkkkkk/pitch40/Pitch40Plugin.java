@@ -26,6 +26,7 @@ public class Pitch40Plugin implements ZenithProxyPlugin {
         // config must be registered before the module reads it in its constructor
         CONFIG = pluginAPI.registerConfig(BuildConstants.PLUGIN_ID, Pitch40Config.class);
         pluginAPI.registerModule(new Pitch40Module());
+        Pitch40Module.registerReconnectGuard();
         pluginAPI.registerModule(new CoordsModule());
         pluginAPI.registerCommand(new Pitch40Command());
     }

@@ -4,7 +4,6 @@ import com.github.rfresh2.EventConsumer;
 import com.zenith.Proxy;
 import com.zenith.event.client.ClientBotTick;
 import com.zenith.event.client.ClientOnlineEvent;
-import com.zenith.event.module.AutoReconnectDecisionEvent;
 import com.zenith.feature.player.ClickResult;
 import com.zenith.feature.player.ClickTarget;
 import com.zenith.feature.player.Input;
@@ -154,8 +153,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             of(ClientOnlineEvent.class, e -> {
                 // only when the bot is in control; never surprise a player who is logged in
                 if (CONFIG.launch.enabled && !Proxy.getInstance().hasActivePlayer()) launcher.arm();
-            }),
-            of(AutoReconnectDecisionEvent.class, autoLog::onAutoReconnectDecision)
+            })
         );
     }
 
@@ -488,6 +486,17 @@ public class Pitch40Module extends AbstractInventoryModule {
         lastRocketAt = Instant.now();
         rocketUses.merge(use, 1, Integer::sum);
         debug("Rocket {} ({}) at Y {}, pitch {}", rockets.firedCount(), use.label, (int) BOT.getY(), (int) BOT.getPitch());
+    }
+
+    /** Blocks AutoReconnect after the plugin's disconnects, whether or not Pitch40 is on. Call once at load. */
+    public static void registerReconnectGuard() {
+        AutoLog.registerReconnectGuard();
+    }
+
+    /** Disconnects right away (the illegal way if that's on), putting the elytra back first. */
+    public void logoutNow(String reason) {
+        restoreElytra();
+        AutoLog.disconnectNow(reason);
     }
 
     /** Puts the elytra back on if the dukway chest swap has the chestplate on. */

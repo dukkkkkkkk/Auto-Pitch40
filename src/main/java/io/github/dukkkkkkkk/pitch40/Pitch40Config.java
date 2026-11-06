@@ -131,6 +131,11 @@ public class Pitch40Config {
         public double blocksBelowLowerBound = 40.0;
         /** Stop AutoReconnect from logging straight back in afterwards. */
         public boolean cancelReconnect = true;
+        /**
+         * Disconnect by sending packets the server always kicks for (attacking yourself, an invalid position), so
+         * the server ends the session itself, with a normal disconnect a second later as a fallback.
+         */
+        public boolean illegalDisconnect = true;
     }
 
     public static final class Launch {

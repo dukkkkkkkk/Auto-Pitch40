@@ -102,6 +102,8 @@ public class Pitch40Command extends Command {
                 "autoLog on/off",
                 "autoLog below <blocks under the lower bound>",
                 "autoLog cancelReconnect on/off",
+                "autoLog illegal on/off",
+                "logout",
                 "coords on/off",
                 "coords interval <hours>",
                 "coords now",
@@ -181,6 +183,20 @@ public class Pitch40Command extends Command {
             .then(chestSwapCommands())
             .then(launchCommands())
             .then(autoLogCommands())
+            .then(literal("logout").executes(c -> {
+                if (!Proxy.getInstance().isConnected()) {
+                    c.getSource().getEmbed()
+                        .title("Error")
+                        .description("Not connected to the server");
+                    return ERROR;
+                }
+                MODULE.get(Pitch40Module.class).logoutNow("Logged out with pitch40 logout");
+                c.getSource().getEmbed()
+                    .title("Logging Out")
+                    .description((CONFIG.autoLog.illegalDisconnect ? "Illegal disconnect sent" : "Disconnected")
+                        + (CONFIG.autoLog.cancelReconnect ? ", AutoReconnect blocked" : ""));
+                return OK;
+            }))
             .then(coordsCommands())
             .then(whisperCommands())
             .then(literal("priority").then(argument("priority", integer()).executes(c -> {
@@ -456,6 +472,14 @@ public class Pitch40Command extends Command {
                     .title("Auto Log Height Set")
                     .description("Disconnects under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound));
             })))
+            .then(literal("illegal").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.autoLog.illegalDisconnect = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Illegal Disconnect " + toggleStrCaps(CONFIG.autoLog.illegalDisconnect))
+                    .description(CONFIG.autoLog.illegalDisconnect
+                        ? "Disconnects get the server to kick the bot itself, with a normal disconnect as a fallback"
+                        : "Disconnects normally");
+            })))
             .then(literal("cancelReconnect").then(argument("toggle", toggle()).executes(c -> {
                 CONFIG.autoLog.cancelReconnect = getToggle(c, "toggle");
                 c.getSource().getEmbed()
@@ -576,7 +600,8 @@ public class Pitch40Command extends Command {
             .addField("Auto Log", toggleStr(CONFIG.autoLog.enabled)
                 + " | under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound)
                 + " (" + CONFIG.autoLog.blocksBelowLowerBound + " below the lower bound)"
-                + (CONFIG.autoLog.cancelReconnect ? " | no reconnect" : ""))
+                + (CONFIG.autoLog.cancelReconnect ? " | no reconnect" : "")
+                + (CONFIG.autoLog.illegalDisconnect ? " | illegal disconnect" : ""))
             .addField("Coords Report", toggleStr(CONFIG.coordReport.enabled) + " | every " + CONFIG.coordReport.intervalHours
                 + " hours" + (CONFIG.coordReport.enabled
                     ? " | next in " + formatDuration(MODULE.get(CoordsModule.class).timeUntilNextReport())

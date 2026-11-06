@@ -81,6 +81,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 autoLog on/off` | on | Disconnects if the bot glides or falls too far under the lower height, and when it's falling within 16 blocks of the bottom of the world (the void), whatever the bounds are. Checked every tick the bot is in control, whether it's flying, waiting to start, launching or pathfinding. It can't act while you're logged into the proxy, since your client is in control then |
 | `pitch40 autoLog below <blocks>` | 40 | How far under the lower height it can sink first. With bounds 360-420 that's Y 320. The emergency rockets fire at 10 and 30 under, so they get a chance first |
 | `pitch40 autoLog cancelReconnect on/off` | on | Stops AutoReconnect logging straight back in afterwards |
+| `pitch40 autoLog illegal on/off` | on | Disconnects by sending packets the server always kicks for (attacking yourself, an invalid position), so the server ends the session itself. A normal disconnect follows a second later as a fallback. Used by auto log, last elytra and `logout` |
+| `pitch40 logout` | | Disconnects right now (the illegal way if that's on), putting the elytra back first and blocking AutoReconnect |
 | `pitch40 coords on/off` | on | Posts the bot's coords to Discord and the terminal on an interval. Works whether or not Pitch40 is on |
 | `pitch40 coords interval <hours>` | 24 | Hours between reports |
 | `pitch40 coords now` | | Sends a report straight away and restarts the timer |
