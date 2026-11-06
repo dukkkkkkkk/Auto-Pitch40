@@ -75,7 +75,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |
 | `pitch40 launch pitch <degrees>` | 60 | How steeply it climbs while rocketing up (10-90 degrees above level) |
 | `pitch40 launch delay <seconds>` | 5 | Wait after connecting before taking off, so the world has loaded |
-| `pitch40 autoLog on/off` | on | Disconnects if the bot sinks too far under the lower height mid-flight |
+| `pitch40 autoLog on/off` | on | Disconnects if the bot glides or falls too far under the lower height, and when it's falling within 16 blocks of the bottom of the world (the void), whatever the bounds are. Checked every tick the bot is in control, whether it's flying, waiting to start, launching or pathfinding. It can't act while you're logged into the proxy, since your client is in control then |
 | `pitch40 autoLog below <blocks>` | 40 | How far under the lower height it can sink first. With bounds 360-420 that's Y 320. The emergency rockets fire at 10 and 30 under, so they get a chance first |
 | `pitch40 autoLog cancelReconnect on/off` | on | Stops AutoReconnect logging straight back in afterwards |
 | `pitch40 coords on/off` | on | Posts the bot's coords to Discord and the terminal on an interval. Works whether or not Pitch40 is on |

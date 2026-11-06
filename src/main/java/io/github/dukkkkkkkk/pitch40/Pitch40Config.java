@@ -109,7 +109,10 @@ public class Pitch40Config {
     }
 
     public static final class AutoLog {
-        /** Disconnect when a flight sinks too far under the corridor. */
+        /**
+         * Disconnect when the bot glides or falls too far under the corridor, or falls toward the void. Checked every
+         * tick the bot is in control, not just mid-flight.
+         */
         public boolean enabled = true;
         /**
          * How far under the lower bound the bot may sink before disconnecting.

@@ -162,6 +162,13 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         checkDimension();
 
+        // safety first: runs whatever state the bot is in, not just mid-flight
+        if (autoLog.tick(launcher.launching())) {
+            endFlight();
+            launcher.cancel();
+            return;
+        }
+
         if (rocketCooldown > 0) rocketCooldown--;
         if (rockets.tick() == RocketTracker.Observation.UNCONFIRMED) {
             debug("Rocket not seen attached after {} ticks, allowing another", RocketTracker.CONFIRM_TIMEOUT_TICKS);
@@ -175,10 +182,6 @@ public class Pitch40Module extends AbstractInventoryModule {
         if (launcher.active() && launcher.tick()) return;
         if (BOT.isOnGround()) {
             if (flying) info("Landed, Pitch40 stopped");
-            endFlight();
-            return;
-        }
-        if (flying && autoLog.tick()) {
             endFlight();
             return;
         }

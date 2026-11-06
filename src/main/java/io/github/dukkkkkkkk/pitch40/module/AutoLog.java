@@ -1,20 +1,32 @@
 package io.github.dukkkkkkkk.pitch40.module;
 
 import com.zenith.Proxy;
+import com.zenith.feature.player.World;
 import com.zenith.event.module.AutoReconnectDecisionEvent;
 
 import static com.zenith.Globals.BOT;
 import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
 
 /**
- * Disconnects when a flight sinks too far under the corridor, before the bot can glide into the ground.
+ * Disconnects before the bot glides or falls to its death.
  *
- * <p>The trigger is relative to the lower bound, so it moves with the corridor. The default leaves room
- * for the emergency rockets (10 and 30 blocks under the lower bound) to try a recovery first.
+ * <p>Checked every tick the bot is in control while Pitch40 is on, whatever it's doing: flying, waiting to start,
+ * launching, or with the pathfinder in charge. Two checks:
+ * <ul>
+ *   <li><b>Too low:</b> gliding, or falling fast, under {@code blocksBelowLowerBound} under the lower bound.
+ *       Skipped while a launch is taking off from the ground, which starts below it on purpose.</li>
+ *   <li><b>Void:</b> falling within {@value #VOID_MARGIN} blocks of the bottom of the world. Always on (with auto
+ *       log), whatever the bounds are set to.</li>
+ * </ul>
+ * The default trigger leaves room for the emergency rockets (10 and 30 under the lower bound) to recover first.
  */
 final class AutoLog {
     /** Marks our disconnects so the auto-reconnect can be cancelled for them, like ZenithProxy's AutoDisconnect. */
     private static final String REASON_PREFIX = "[Pitch40] ";
+    /** Disconnect when falling within this many blocks of the dimension's lowest Y. */
+    static final int VOID_MARGIN = 16;
+    /** Falling faster than this (blocks/tick, about 8 blocks of free fall) counts as falling, not just a jump. */
+    private static final double FREE_FALL_SPEED = -1.0;
 
     private final Pitch40Module module;
 
@@ -22,21 +34,33 @@ final class AutoLog {
         this.module = module;
     }
 
-    /** The Y below which a flight disconnects. */
+    /** The Y below which a glide or fall disconnects. */
     static double triggerY() {
         return CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound;
     }
 
     /**
-     * Call once per tick while a flight is running.
+     * Call every tick the bot is in control.
      *
+     * @param launching a launch is taking off, so being low is expected
      * @return true if it disconnected
      */
-    boolean tick() {
-        if (!CONFIG.autoLog.enabled) return false;
+    boolean tick(boolean launching) {
+        if (!CONFIG.autoLog.enabled || BOT.isOnGround()) return false;
         double y = BOT.getY();
+        double velocityY = BOT.getVelocity().getY();
+
+        var dimension = World.getCurrentDimension();
+        if (dimension != null && velocityY < 0 && y < dimension.minY() + VOID_MARGIN) {
+            module.warn("Falling into the void at Y {}, disconnecting", (int) y);
+            disconnect("Falling into the void at Y " + (int) y);
+            return true;
+        }
+
+        if (launching) return false;
+        boolean falling = BOT.isFallFlying() || velocityY < FREE_FALL_SPEED;
         double trigger = triggerY();
-        if (y >= trigger) return false;
+        if (!falling || y >= trigger) return false;
         module.warn("Y {} is under the auto log height ({}), disconnecting", (int) y, (int) trigger);
         disconnect("Fell to Y " + (int) y + ", under the auto log height " + (int) trigger);
         return true;

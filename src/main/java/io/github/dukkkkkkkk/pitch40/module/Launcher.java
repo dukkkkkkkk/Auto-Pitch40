@@ -65,6 +65,12 @@ final class Launcher {
         return phase != Phase.IDLE;
     }
 
+    /** Physically taking off or climbing (not just waiting to). */
+    boolean launching() {
+        var current = phase;
+        return current == Phase.JUMP || current == Phase.OPEN_ELYTRA || current == Phase.CLIMB;
+    }
+
     String describe() {
         return switch (phase) {
             case IDLE -> "idle";
