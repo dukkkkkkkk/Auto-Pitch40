@@ -95,6 +95,9 @@ public class Pitch40Command extends Command {
                 "chestSwap interval <ticks>",
                 "chestSwap slot <hotbar slot 0-8>",
                 "chestSwap pauseForRockets on/off",
+                "regear on/off",
+                "regear now",
+                "regear keepRockets <count>",
                 "launch on/off",
                 "launch now",
                 "launch pitch <degrees up>",
@@ -182,6 +185,7 @@ public class Pitch40Command extends Command {
             }))
             .then(chestSwapCommands())
             .then(launchCommands())
+            .then(regearCommands())
             .then(autoLogCommands())
             .then(literal("logout").executes(c -> {
                 if (!Proxy.getInstance().isConnected()) {
@@ -422,6 +426,37 @@ public class Pitch40Command extends Command {
             })));
     }
 
+    private LiteralArgumentBuilder<CommandContext> regearCommands() {
+        return literal("regear")
+            .then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.regear.enabled = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Regear " + toggleStrCaps(CONFIG.regear.enabled))
+                    .description(CONFIG.regear.enabled
+                        ? "On the second-to-last good elytra it lands, mends the elytras with XP from a shulker, and takes off"
+                        : "Won't land to mend");
+            }))
+            .then(literal("now").executes(c -> {
+                String problem = MODULE.get(Pitch40Module.class).regearNow();
+                if (problem != null) {
+                    c.getSource().getEmbed()
+                        .title("Can't Regear")
+                        .description(problem);
+                    return ERROR;
+                }
+                c.getSource().getEmbed()
+                    .title("Regearing")
+                    .description("Landing to mend the elytras");
+                return OK;
+            }))
+            .then(literal("keepRockets").then(argument("count", integer(0, 2304)).executes(c -> {
+                CONFIG.regear.keepRockets = getInteger(c, "count");
+                c.getSource().getEmbed()
+                    .title("Keep Rockets Set")
+                    .description("Keeps " + CONFIG.regear.keepRockets + " rockets and puts the rest in the shulker to make room for XP");
+            })));
+    }
+
     private LiteralArgumentBuilder<CommandContext> launchCommands() {
         return literal("launch")
             .then(argument("toggle", toggle()).executes(c -> {
@@ -595,6 +630,8 @@ public class Pitch40Command extends Command {
                     : " | every " + chestSwap.intervalTicks + " ticks")
                 + " | slot " + module.chestplateHotbarSlot()
                 + (chestSwap.pauseForRockets ? " | pauses for rockets" : ""))
+            .addField("Regear", toggleStr(CONFIG.regear.enabled) + " | on the second-to-last good elytra | keeps "
+                + CONFIG.regear.keepRockets + " rockets")
             .addField("Launch", toggleStr(CONFIG.launch.enabled) + " | to Y " + (int) CONFIG.corridor.upperBound
                 + " | " + Math.round(CONFIG.launch.pitch) + " deg up | " + CONFIG.launch.delaySeconds + "s after connecting")
             .addField("Auto Log", toggleStr(CONFIG.autoLog.enabled)

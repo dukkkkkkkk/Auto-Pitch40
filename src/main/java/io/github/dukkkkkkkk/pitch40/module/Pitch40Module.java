@@ -80,6 +80,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     private final AutoLog autoLog = new AutoLog(this);
     private final Launcher launcher = new Launcher(this);
     private final TurnAnticipation turns = new TurnAnticipation();
+    private final Regear regear;
 
     /** A Pitch40 cycle is running. Cleared on landing, dimension change, or disable. */
     private boolean flying = false;
@@ -118,6 +119,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         super(HandRestriction.EITHER, configuredRocketSlot());
         this.rocketHotbarSlot = configuredRocketSlot();
         this.chestSwap = new ChestSwap(this, rocketHotbarSlot);
+        this.regear = new Regear(this, rocketHotbarSlot);
     }
 
     private static int configuredRocketSlot() {
@@ -156,6 +158,7 @@ public class Pitch40Module extends AbstractInventoryModule {
                 reset();
                 // a player took over (or we disconnected): don't launch when they leave later
                 launcher.cancel();
+                regear.cancel();
             }),
             of(ClientOnlineEvent.class, e -> {
                 // only when the bot is in control; never surprise a player who is logged in
@@ -180,6 +183,7 @@ public class Pitch40Module extends AbstractInventoryModule {
     public void onDisable() {
         reset();
         launcher.cancel();
+        regear.cancel();
     }
 
     // ---- tick ----
@@ -191,10 +195,18 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         checkDimension();
 
-        // safety first: runs whatever state the bot is in, not just mid-flight
-        if (autoLog.tick(launcher.launching())) {
+        // safety first: runs whatever state the bot is in, not just mid-flight. Landing to regear and taking off
+        // are low on purpose (the void check still applies)
+        if (autoLog.tick(launcher.launching() || regear.active())) {
             endFlight();
             launcher.cancel();
+            regear.cancel();
+            return;
+        }
+
+        // landed to regear: it drives the bot until it's done, then take off again
+        if (regear.active()) {
+            if (!regear.tick()) launcher.arm(true);
             return;
         }
 
@@ -216,6 +228,12 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         if (!elytra.tick(!chestSwap.holdingChestplate())) {
             cycle.reset();
+            return;
+        }
+        // down to the second-to-last good elytra: land and mend them, keeping the last one untouched
+        if (flying && regear.shouldStart(elytra.spareCount())) {
+            endFlight();
+            regear.start("down to the second-to-last good elytra");
             return;
         }
         if (CONFIG.elytra.lastElytra && elytra.reachedLastElytra()) {
@@ -538,6 +556,20 @@ public class Pitch40Module extends AbstractInventoryModule {
         chestSwap.restoreElytra();
     }
 
+    /** Start a regear now, or say why it can't. Returns null if it started. */
+    public @Nullable String regearNow() {
+        if (!Proxy.getInstance().isConnected() || Proxy.getInstance().hasActivePlayer()) {
+            return "the bot has to be in control (not connected, or you're logged into the proxy)";
+        }
+        if (regear.active()) return "already regearing";
+        String problem = regear.problem();
+        if (problem != null) return problem;
+        endFlight();
+        launcher.cancel();
+        regear.start("asked for");
+        return null;
+    }
+
     /** Schedule a launch to the upper bound. Runs once the bot is in control. */
     public void launchNow() {
         launcher.arm(true);
@@ -577,6 +609,8 @@ public class Pitch40Module extends AbstractInventoryModule {
         if (Proxy.getInstance().hasActivePlayer()) {
             return "waiting: you're logged into the proxy, so you're in control. The bot takes over when you disconnect";
         }
+        // the regear drives the pathfinder itself, so check it first
+        if (regear.active()) return "regearing: " + regear.describe();
         if (BARITONE.isActive()) return "paused (pathfinder active)";
         if (launcher.active()) return launcher.describe();
         if (!flying) return idleReason();

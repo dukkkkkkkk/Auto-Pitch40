@@ -13,6 +13,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
   - `boost`: as `keep`, plus a rocket every few climbs for speed
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
 - **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low
+- **Auto regear**: when it's down to its second-to-last good elytra, it lands, places a shulker of XP bottles from the inventory, swaps spare rockets for XP, throws the XP to mend all the elytras, mines the shulker back up and takes off again
 - **Last elytra**: disconnects as soon as it's down to its last elytra, so that one stays full for the trip home
 - **Auto launch**: after the proxy connects, it takes off by itself and rockets up to the upper height, then starts flying
 - **Auto deploy**: reopens the elytra if the glide drops out mid-air
@@ -74,6 +75,9 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
 | `pitch40 chestSwap pauseForRockets on/off` | on | Stops swapping while a rocket is boosting so the elytra stays on for the whole boost, then goes back to swapping |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |
+| `pitch40 regear on/off` | on | When the bot gets down to its second-to-last good elytra (one spare left), it lands with the pathfinder (which finds a safe spot), places the XP shulker next to itself, puts spare rockets in and takes XP out, throws the XP straight down to mend every elytra (they need Mending; ZenithProxy's AutoMend is switched on for it), mines the shulker back up and launches. Needs a shulker with XP bottles in the inventory, and no other shulker of the same colour |
+| `pitch40 regear now` | | Regears straight away |
+| `pitch40 regear keepRockets <count>` | 128 | Rockets to keep when putting spares into the shulker |
 | `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the upper height |
 | `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |
 | `pitch40 launch pitch <degrees>` | 60 | How steeply it climbs while rocketing up (10-90 degrees above level) |

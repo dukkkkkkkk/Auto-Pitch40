@@ -21,6 +21,7 @@ public class Pitch40Config {
     public final ChestSwap chestSwap = new ChestSwap();
     public final AutoLog autoLog = new AutoLog();
     public final Launch launch = new Launch();
+    public final Regear regear = new Regear();
     public final CoordReport coordReport = new CoordReport();
     public final WhisperReply whisperReply = new WhisperReply();
 
@@ -136,6 +137,16 @@ public class Pitch40Config {
          * the server ends the session itself, with a normal disconnect a second later as a fallback.
          */
         public boolean illegalDisconnect = true;
+    }
+
+    public static final class Regear {
+        /**
+         * When the bot is down to its second-to-last good elytra, land, place the shulker of XP bottles from the
+         * inventory, take XP out, mend the elytras (they need Mending), mine the shulker back up and take off.
+         */
+        public boolean enabled = true;
+        /** Rockets to keep when putting spare rockets into the shulker to make room for XP. */
+        public int keepRockets = 128;
     }
 
     public static final class Launch {
