@@ -9,7 +9,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
 - **Pitch40 flight** between two configurable heights, with an optional fixed heading
 - **No ceiling mode**: drop the upper height and let it climb as high as the rockets take it
 - **Rockets only where they pay off**:
-  - `keep`: a rocket only when climbs top out too far under the upper height *and* keep getting lower, or when the bot stalls under the lower height. Below the band it climbs back up on its own instead of rocketing
+  - `keep`: inside the band, a rocket only when climbs top out too far under the upper height *and* keep getting lower. Under the band, a rocket whenever a climb peaks under the lower height, until it's back in (still at most one per `gap`). Plus one when the bot stalls
   - `boost`: as `keep`, plus a rocket every few climbs for speed
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
 - **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low

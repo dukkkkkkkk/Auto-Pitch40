@@ -60,6 +60,11 @@ public class Pitch40Module extends AbstractInventoryModule {
     private static final double STALL_SINK = 0.3;
     /** ...with less horizontal speed than this (blocks/tick). */
     private static final double STALL_HORIZONTAL_SPEED = 0.5;
+    /**
+     * How far under the last peak a dive goes while under the band. 40 got back into the band fastest in an
+     * elytra physics simulation and kept it there when climbs level off (60 let the whole cycle sink).
+     */
+    private static final double UNDER_BAND_DIVE = 40.0;
     /** Sinking this fast (blocks/tick) while fully pitched up means the climb has failed. */
     private static final double FAILED_CLIMB_SINK = 0.1;
     /** A climbing rocket is skipped when speed along the look direction is already this high (blocks/tick). */
@@ -233,6 +238,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             BOT.getVelocity().getY(),
             CONFIG.rockets.mode,
             CONFIG.corridor.ceiling ? CONFIG.corridor.upperBound : GlideCycle.NO_CEILING,
+            CONFIG.corridor.lowerBound,
             CONFIG.corridor.climbGain,
             CONFIG.rockets.heightTolerance,
             CONFIG.rockets.climbsPerRocket
@@ -319,9 +325,9 @@ public class Pitch40Module extends AbstractInventoryModule {
         boolean anticipate = CONFIG.corridor.stayInBounds;
         if (pitchingDown) {
             // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak.
-            // Under the band, diveDepth under the peak too, so it climbs back up on its own instead of stalling
+            // Under the band, a short dive under the peak: enough speed to climb, without sinking the whole cycle
             double target = diveFromY <= corridor.lowerBound
-                ? diveFromY - corridor.diveDepth
+                ? diveFromY - Math.min(corridor.diveDepth, UNDER_BAND_DIVE)
                 : corridor.ceiling
                     ? corridor.lowerBound
                     : Math.max(corridor.lowerBound, diveFromY - corridor.diveDepth);
