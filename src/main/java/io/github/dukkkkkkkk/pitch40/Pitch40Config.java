@@ -63,6 +63,8 @@ public class Pitch40Config {
         public double heightTolerance = 10.0;
         /** BOOST only: fire a rocket on every Nth climb. */
         public int climbsPerRocket = 1;
+        /** Least time between rockets, except launches and stalls. Stops it burning through rockets. */
+        public int minSecondsBetween = 30;
         /** Hotbar slot (0-8) rockets are moved into when none are held. Read at startup. */
         public int hotbarSlot = 8;
     }
@@ -70,7 +72,7 @@ public class Pitch40Config {
     public enum RocketMode {
         /** Free glide only. */
         OFF,
-        /** A rocket only when the cycle sinks below the corridor. */
+        /** A rocket only when climbs fall short of the upper bound and keep getting lower, or on a stall. */
         KEEP,
         /** KEEP, plus a rocket every {@link Rockets#climbsPerRocket} climbs for speed. */
         BOOST

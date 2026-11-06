@@ -20,6 +20,10 @@ import io.github.dukkkkkkkk.pitch40.util.Notice;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 
 import static com.github.rfresh2.EventConsumer.of;
@@ -51,11 +55,12 @@ public class Pitch40Module extends AbstractInventoryModule {
     private static final double START_MARGIN = 40.0;
     private static final int NO_ROCKETS_RETRY_TICKS = 20;
     private static final int CLICK_REJECTED_RETRY_TICKS = 5;
-    /** Under the lower bound by this much and stalling: emergency rocket. */
+    /** Under the lower bound by this much and stalled: emergency rocket. */
     private static final double EMERGENCY_SAG = 10.0;
-    /** Under the lower bound by this much: emergency rocket even at speed. */
-    private static final double EMERGENCY_DEEP = 30.0;
-    private static final double STALL_SPEED = 0.8;
+    /** Stalled: pitched up, yet falling faster than this (blocks/tick)... */
+    private static final double STALL_SINK = 0.3;
+    /** ...with less horizontal speed than this (blocks/tick). */
+    private static final double STALL_HORIZONTAL_SPEED = 0.5;
     /** Sinking this fast (blocks/tick) while fully pitched up means the climb has failed. */
     private static final double FAILED_CLIMB_SINK = 0.1;
     /** A climbing rocket is skipped when speed along the look direction is already this high (blocks/tick). */
@@ -77,6 +82,25 @@ public class Pitch40Module extends AbstractInventoryModule {
     /** No ceiling: the Y the current dive started from (the last peak). */
     private double diveFromY = 0.0;
     private int rocketCooldown = 0;
+    /** When the last rocket went off, for the gap between non-emergency rockets. */
+    private Instant lastRocketAt = Instant.EPOCH;
+    /** Rockets fired this session, by why. */
+    private final EnumMap<RocketUse, Integer> rocketUses = new EnumMap<>(RocketUse.class);
+
+    /** Why a rocket was fired, for the status. */
+    enum RocketUse {
+        LAUNCH("launch"),
+        CORRIDOR("holding height"),
+        CLIMB("climb gain"),
+        BOOST("boost"),
+        EMERGENCY("stall");
+
+        final String label;
+
+        RocketUse(String label) {
+            this.label = label;
+        }
+    }
     private boolean jumpHeld = false;
     private RequestFuture rocketMove = RequestFuture.rejected;
     private @Nullable DimensionData lastDimension = null;
@@ -257,7 +281,8 @@ public class Pitch40Module extends AbstractInventoryModule {
         flying = true;
         waitingToStart.clear();
         double y = BOT.getY();
-        pitchingDown = y > CONFIG.corridor.lowerBound;
+        // always start with a dive: it builds the speed the first climb needs
+        pitchingDown = true;
         diveFromY = y;
         pitch = MathHelper.clamp(BOT.getPitch(), -MAX_PITCH, MAX_PITCH);
         cycle.reset();
@@ -289,10 +314,13 @@ public class Pitch40Module extends AbstractInventoryModule {
         double y = BOT.getY();
         boolean anticipate = CONFIG.corridor.stayInBounds;
         if (pitchingDown) {
-            // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak
-            double target = corridor.ceiling
-                ? corridor.lowerBound
-                : Math.max(corridor.lowerBound, diveFromY - corridor.diveDepth);
+            // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak.
+            // Under the band, diveDepth under the peak too, so it climbs back up on its own instead of stalling
+            double target = diveFromY <= corridor.lowerBound
+                ? diveFromY - corridor.diveDepth
+                : corridor.ceiling
+                    ? corridor.lowerBound
+                    : Math.max(corridor.lowerBound, diveFromY - corridor.diveDepth);
             turns.diving(target);
             if (y <= target + (anticipate ? turns.bottomLead() : 0.0)) pitchingDown = false;
         } else if (corridor.ceiling && y >= corridor.upperBound - (anticipate ? turns.topLead() : 0.0)) {
@@ -301,7 +329,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         } else if (cycle.toppedOut()) {
             // the climb peaked short of the upper bound (or there's no ceiling): dive to rebuild speed
             startDive(cycle.lastPeakY());
-        } else if (pitch <= -MAX_PITCH && BOT.getVelocity().getY() < -FAILED_CLIMB_SINK && y > corridor.lowerBound) {
+        } else if (pitch <= -MAX_PITCH && BOT.getVelocity().getY() < -FAILED_CLIMB_SINK) {
             // fully pitched up but still sinking: too slow to climb, dive again to build speed
             startDive(y);
         }
@@ -342,21 +370,35 @@ public class Pitch40Module extends AbstractInventoryModule {
 
     private boolean wantsRocket() {
         if (CONFIG.rockets.mode == RocketMode.OFF || rocketCooldown > 0) return false;
-        double y = BOT.getY();
-        double floor = CONFIG.corridor.lowerBound;
-        var velocity = BOT.getVelocity();
-        boolean emergency = y < floor - EMERGENCY_SAG
-            && (velocity.length() < STALL_SPEED || y < floor - EMERGENCY_DEEP);
+        boolean emergency = stalledUnderFloor();
         if (!cycle.needsRocket && !emergency) return false;
         if (rockets.inFlight()) return false;
         if (emergency) return true;
 
+        // normal rockets keep a gap between them
+        if (Duration.between(lastRocketAt, Instant.now()).toMillis() < Math.max(0, CONFIG.rockets.minSecondsBetween) * 1000L) {
+            return false;
+        }
         // spend it on a climb, and only when it actually adds speed along the look direction
+        var velocity = BOT.getVelocity();
         boolean climbing = BOT.getPitch() < 0.0f || velocity.getY() > GlideCycle.VELOCITY_DEADBAND;
         if (!climbing) return false;
         var look = MathHelper.calculateViewVector(BOT.getYaw(), BOT.getPitch());
         double speedAlongLook = velocity.getX() * look.getX() + velocity.getY() * look.getY() + velocity.getZ() * look.getZ();
         return speedAlongLook < ROCKET_GATE;
+    }
+
+    /**
+     * An actual stall under the corridor: pitched up but falling, with almost no forward speed. Just being under
+     * the lower bound isn't one; the bot climbs back up on its own. Diving doesn't count either.
+     */
+    private boolean stalledUnderFloor() {
+        var velocity = BOT.getVelocity();
+        double horizontalSpeed = Math.hypot(velocity.getX(), velocity.getZ());
+        return BOT.getY() < CONFIG.corridor.lowerBound - EMERGENCY_SAG
+            && BOT.getPitch() < 0.0f
+            && velocity.getY() < -STALL_SINK
+            && horizontalSpeed < STALL_HORIZONTAL_SPEED;
     }
 
     /**
@@ -397,10 +439,11 @@ public class Pitch40Module extends AbstractInventoryModule {
         var future = INPUTS.submit(request.build());
         if (click == null) return false;
 
-        String reason = !cycle.needsRocket ? "under the floor"
-            : cycle.rocketForBoost ? "for the boost"
-            : "to hold the corridor";
-        future.addInputExecutedListener(f -> onRocketClickExecuted(f, reason));
+        RocketUse use = !cycle.needsRocket ? RocketUse.EMERGENCY
+            : cycle.rocketForBoost ? RocketUse.BOOST
+            : CONFIG.corridor.ceiling ? RocketUse.CORRIDOR
+            : RocketUse.CLIMB;
+        future.addInputExecutedListener(f -> onRocketClickExecuted(f, use));
         return true;
     }
 
@@ -424,10 +467,10 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         if (CONFIG.corridor.lockYaw) request.yaw(CONFIG.corridor.yaw);
         var future = INPUTS.submit(request.build());
-        if (click != null) future.addInputExecutedListener(f -> onRocketClickExecuted(f, "to launch"));
+        if (click != null) future.addInputExecutedListener(f -> onRocketClickExecuted(f, RocketUse.LAUNCH));
     }
 
-    private void onRocketClickExecuted(InputRequestFuture future, String reason) {
+    private void onRocketClickExecuted(InputRequestFuture future, RocketUse use) {
         boolean used = future.getClickResult() instanceof ClickResult.RightClickResult rightClick
             && rightClick.getType() == ClickResult.RightClickResult.RightClickType.USE_ITEM;
         if (!used) {
@@ -436,7 +479,9 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         rockets.fired();
         cycle.needsRocket = false;
-        debug("Rocket {} {} at Y {}, pitch {}", rockets.firedCount(), reason, (int) BOT.getY(), (int) BOT.getPitch());
+        lastRocketAt = Instant.now();
+        rocketUses.merge(use, 1, Integer::sum);
+        debug("Rocket {} ({}) at Y {}, pitch {}", rockets.firedCount(), use.label, (int) BOT.getY(), (int) BOT.getPitch());
     }
 
     /** Schedule a launch to the upper bound. Runs once the bot is in control. */
@@ -485,6 +530,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             .append(pitchingDown ? "diving" : "climbing")
             .append(" | pitch ").append(Math.round(pitch))
             .append(" | rockets fired ").append(rockets.firedCount());
+        if (!rocketUses.isEmpty()) status.append(" (").append(rocketUseText()).append(")");
         if (rockets.pending()) status.append(" (unconfirmed)");
         if (!CONFIG.corridor.ceiling && !Double.isNaN(cycle.bestPeakY())) {
             status.append(" | best peak Y ").append(Math.round(cycle.bestPeakY()));
@@ -494,6 +540,14 @@ public class Pitch40Module extends AbstractInventoryModule {
             if (boostingWithRocket()) status.append(" (paused for rocket)");
         }
         return status.toString();
+    }
+
+    /** e.g. "launch 13, holding height 2". */
+    public String rocketUseText() {
+        if (rocketUses.isEmpty()) return "none yet";
+        var parts = new ArrayList<String>();
+        rocketUses.forEach((use, count) -> parts.add(use.label + " " + count));
+        return String.join(", ", parts);
     }
 
     private String idleReason() {
@@ -532,5 +586,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         chestSwap.reset();
         noRockets.clear();
         lastDimension = null;
+        rocketUses.clear();
+        lastRocketAt = Instant.EPOCH;
     }
 }

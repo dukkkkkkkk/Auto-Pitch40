@@ -95,10 +95,15 @@ final class GlideCycle {
         climbs++;
         // with no ceiling, aim climbGain above the best peak before this one; the first climb sets it
         double target = Double.isNaN(ceiling) ? bestPeakY + Math.max(0.0, climbGain) : ceiling;
+        // with a ceiling, only spend a rocket when climbs are actually getting lower; if they're short but
+        // holding or rising, Pitch40 climbs back up by itself
+        boolean declining = !Double.isNaN(lastPeakY) && peakY < lastPeakY - 1.0;
+        boolean mustDecline = !Double.isNaN(ceiling);
         lastPeakY = peakY;
         bestPeakY = Double.isNaN(bestPeakY) ? peakY : Math.max(bestPeakY, peakY);
 
-        boolean shortApex = mode != RocketMode.OFF && !Double.isNaN(target) && target - peakY > tolerance;
+        boolean shortApex = mode != RocketMode.OFF && !Double.isNaN(target) && target - peakY > tolerance
+            && (!mustDecline || declining);
         boolean boostTurn = mode == RocketMode.BOOST && climbs % climbsPerRocket == 0;
         if (shortApex || boostTurn) {
             needsRocket = true;

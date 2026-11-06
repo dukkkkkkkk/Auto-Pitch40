@@ -80,6 +80,7 @@ public class Pitch40Command extends Command {
                 "rockets <off/keep/boost>",
                 "rockets heightTolerance <blocks>",
                 "rockets climbsPerRocket <count>",
+                "rockets gap <seconds>",
                 "elytra autoDeploy on/off",
                 "elytra replace on/off",
                 "elytra replace durability <durability>",
@@ -298,6 +299,12 @@ public class Pitch40Command extends Command {
                 CONFIG.rockets.heightTolerance = getDouble(c, "blocks");
                 c.getSource().getEmbed()
                     .title("Height Tolerance Set");
+            })))
+            .then(literal("gap").then(argument("seconds", integer(0, 600)).executes(c -> {
+                CONFIG.rockets.minSecondsBetween = getInteger(c, "seconds");
+                c.getSource().getEmbed()
+                    .title("Rocket Gap Set")
+                    .description("At least " + CONFIG.rockets.minSecondsBetween + "s between rockets, except launches and stalls");
             })))
             .then(literal("climbsPerRocket").then(argument("count", integer(1, 10)).executes(c -> {
                 CONFIG.rockets.climbsPerRocket = getInteger(c, "count");
@@ -534,6 +541,7 @@ public class Pitch40Command extends Command {
                 + " | tolerance " + rockets.heightTolerance
                 + (rockets.mode == RocketMode.BOOST ? " | every " + rockets.climbsPerRocket + " climbs" : ""))
             .addField("Rockets Carried", module.rocketCount() + " (slot " + module.rocketHotbarSlot() + ")")
+            .addField("Rockets Used", module.rocketUseText() + " | at least " + rockets.minSecondsBetween + "s apart")
             .addField("Auto Deploy", toggleStr(elytra.autoDeploy))
             .addField("Elytra Replace", toggleStr(elytra.autoReplace) + " at " + elytra.replaceDurability
                 + " | " + module.spareElytraCount() + " usable spares (min " + module.minSpareDurability() + ")")

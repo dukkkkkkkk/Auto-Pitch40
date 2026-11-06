@@ -18,7 +18,7 @@ import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
  *   <li><b>Void:</b> falling within {@value #VOID_MARGIN} blocks of the bottom of the world. Always on (with auto
  *       log), whatever the bounds are set to.</li>
  * </ul>
- * The default trigger leaves room for the emergency rockets (10 and 30 under the lower bound) to recover first.
+ * The default trigger leaves room for the bot to recover first (it climbs back up, or rockets out of a stall).
  */
 final class AutoLog {
     /** Marks our disconnects so the auto-reconnect can be cancelled for them, like ZenithProxy's AutoDisconnect. */

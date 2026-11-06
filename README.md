@@ -9,7 +9,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
 - **Pitch40 flight** between two configurable heights, with an optional fixed heading
 - **No ceiling mode**: drop the upper height and let it climb as high as the rockets take it
 - **Rockets only where they pay off**:
-  - `keep`: a rocket only when a climb tops out too far under the upper height, or as an emergency when sinking well under the lower one
+  - `keep`: a rocket only when climbs top out too far under the upper height *and* keep getting lower, or when the bot stalls under the lower height. Below the band it climbs back up on its own instead of rocketing
   - `boost`: as `keep`, plus a rocket every few climbs for speed
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
 - **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low
@@ -60,6 +60,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 rockets <off/keep/boost>` | keep | Rocket mode |
 | `pitch40 rockets heightTolerance <blocks>` | 10 | How far under the upper height a climb may top out before a rocket is spent. Higher saves rockets but flies lower |
 | `pitch40 rockets climbsPerRocket <count>` | 1 | Boost only: a rocket every Nth climb |
+| `pitch40 rockets gap <seconds>` | 30 | Least time between rockets, except launches and stalls |
 | `pitch40 elytra autoDeploy on/off` | on | Reopens the elytra while falling |
 | `pitch40 elytra replace on/off` | on | Swaps in a spare elytra when the worn one runs low |
 | `pitch40 elytra replace durability <n>` | 10 | Durability left at which it's replaced (minimum 2) |
@@ -88,7 +89,9 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 whisper antiSpam on/off` | on | Adds a random tag like `[s2o9f]` to each reply so the server's spam filter doesn't drop repeats |
 | `pitch40 priority <n>` | 7500 | Input priority. Beats AntiAFK; KillAura and AutoEat still win |
 
-Run `pitch40` on its own to see the current settings and what the bot is doing.
+Run `pitch40` on its own to see the current settings and what the bot is doing, including how many rockets went on what (launch, holding height, climb gain, boost, stall).
+
+Launches are where most rockets go: about 10 to climb from Y 80 to 420, and about 37 to 1500. A high upper bound costs a lot every time the bot has to launch.
 
 ### No ceiling
 
