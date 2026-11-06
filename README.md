@@ -1,4 +1,4 @@
-# Auto-Pitch40
+# Auto-Pitch40 by Duk
 
 A [ZenithProxy](https://github.com/rfresh2/ZenithProxy) plugin that flies the bot with Pitch40 elytra travel while you're offline.
 
