@@ -38,9 +38,13 @@ final class ElytraManager {
         this.module = module;
     }
 
-    /** Call once per airborne tick. Returns true when a usable elytra is worn. */
-    boolean tick() {
-        if (CONFIG.elytra.autoReplace) tryReplace(Items.chest());
+    /**
+     * Call once per airborne tick. Returns true when a usable elytra is worn.
+     *
+     * @param allowReplace false while something else (the dukway chest swap) has the chest slot
+     */
+    boolean tick(boolean allowReplace) {
+        if (CONFIG.elytra.autoReplace && allowReplace) tryReplace(Items.chest());
 
         ItemStack chest = Items.chest();
         if (!Items.isElytra(chest)) {
@@ -98,6 +102,15 @@ final class ElytraManager {
 
     static boolean isUsableSpare(@Nullable ItemStack stack) {
         return Items.isElytra(stack) && Items.durabilityLeft(stack) >= minSpareDurability();
+    }
+
+    /** The worn elytra is due to be replaced and there's a spare to replace it with. */
+    boolean needsReplacement() {
+        if (!CONFIG.elytra.autoReplace) return false;
+        var chest = Items.chest();
+        if (chest != null && !Items.isElytra(chest)) return false;
+        boolean due = chest == null || Items.durabilityLeft(chest) <= replaceThreshold();
+        return due && bestSpareSlot() != -1;
     }
 
     /** An elytra replacement is still being clicked through. */

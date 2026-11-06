@@ -7,6 +7,7 @@ import com.zenith.command.api.CommandCategory;
 import com.zenith.command.api.CommandContext;
 import com.zenith.command.api.CommandUsage;
 import com.zenith.discord.Embed;
+import io.github.dukkkkkkkk.pitch40.Pitch40Config.ChestSwapMode;
 import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
 import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
@@ -89,6 +90,8 @@ public class Pitch40Command extends Command {
                 "elytras",
                 "elytra warning <durability>",
                 "chestSwap on/off",
+                "chestSwap dukway",
+                "chestSwap quick",
                 "chestSwap interval <ticks>",
                 "chestSwap slot <hotbar slot 0-8>",
                 "chestSwap pauseForRockets on/off",
@@ -359,6 +362,21 @@ public class Pitch40Command extends Command {
                 c.getSource().getEmbed()
                     .title("Chest Swap " + toggleStrCaps(CONFIG.chestSwap.enabled));
             }))
+            .then(literal("dukway").executes(c -> {
+                CONFIG.chestSwap.enabled = true;
+                CONFIG.chestSwap.mode = ChestSwapMode.DUKWAY;
+                c.getSource().getEmbed()
+                    .title("Chest Swap: Dukway")
+                    .description("Chestplate on for " + CONFIG.chestSwap.intervalTicks + " ticks, then the elytra for 1 tick with a glide start. "
+                        + "The elytra goes back on for rockets, elytra replacement, landing and disconnecting");
+            }))
+            .then(literal("quick").executes(c -> {
+                CONFIG.chestSwap.enabled = true;
+                CONFIG.chestSwap.mode = ChestSwapMode.QUICK;
+                c.getSource().getEmbed()
+                    .title("Chest Swap: Quick")
+                    .description("Elytra stays on; every " + CONFIG.chestSwap.intervalTicks + " ticks a same-tick chestplate swap and glide restart");
+            }))
             .then(literal("interval").then(argument("ticks", integer(1, 19)).executes(c -> {
                 CONFIG.chestSwap.intervalTicks = getInteger(c, "ticks");
                 c.getSource().getEmbed()
@@ -547,8 +565,11 @@ public class Pitch40Command extends Command {
                 + " | " + module.spareElytraCount() + " usable spares (min " + module.minSpareDurability() + ")")
             .addField("Last Elytra", toggleStr(elytra.lastElytra) + (elytra.lastElytra ? " | disconnects on the last full elytra" : ""))
             .addField("Durability Warning", elytra.lowDurabilityWarning)
-            .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | every " + chestSwap.intervalTicks
-                + " ticks | slot " + module.chestplateHotbarSlot()
+            .addField("Chest Swap", toggleStr(chestSwap.enabled) + " | " + chestSwap.mode.name().toLowerCase()
+                + (chestSwap.mode == ChestSwapMode.DUKWAY
+                    ? " | chestplate " + chestSwap.intervalTicks + " ticks, elytra 1 tick"
+                    : " | every " + chestSwap.intervalTicks + " ticks")
+                + " | slot " + module.chestplateHotbarSlot()
                 + (chestSwap.pauseForRockets ? " | pauses for rockets" : ""))
             .addField("Launch", toggleStr(CONFIG.launch.enabled) + " | to Y " + (int) CONFIG.corridor.upperBound
                 + " | " + Math.round(CONFIG.launch.pitch) + " deg up | " + CONFIG.launch.delaySeconds + "s after connecting")

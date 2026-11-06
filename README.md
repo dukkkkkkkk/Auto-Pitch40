@@ -69,6 +69,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 elytra last on/off` | on | Disconnects as soon as it swaps onto its last elytra, so you keep one full elytra to fly home with. Needs at least one spare to start with. AutoReconnect is cancelled too unless `autoLog cancelReconnect` is off |
 | `pitch40 elytra warning <n>` | 20 | Warns at this durability when there's no spare left |
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |
+| `pitch40 chestSwap dukway` | | Turns chest swap on in dukway mode: chestplate on for `interval` ticks, then the elytra for 1 tick with a glide start, over and over. The elytra goes back on before rockets, elytra replacement, landing, disconnecting or a player taking over |
+| `pitch40 chestSwap quick` | quick | Turns chest swap on in the default mode: elytra stays on, with a same-tick chestplate swap and glide restart every `interval` ticks |
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
 | `pitch40 chestSwap pauseForRockets on/off` | on | Stops swapping while a rocket is boosting so the elytra stays on for the whole boost, then goes back to swapping |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |

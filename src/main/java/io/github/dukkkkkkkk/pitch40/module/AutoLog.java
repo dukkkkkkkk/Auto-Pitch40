@@ -68,6 +68,8 @@ final class AutoLog {
 
     /** Disconnects with a reason marked as ours, so {@link #onAutoReconnectDecision} can cancel the reconnect. */
     void disconnect(String reason) {
+        // never log out wearing the dukway chestplate mid-air
+        module.restoreElytra();
         Proxy.getInstance().disconnect(REASON_PREFIX + reason);
     }
 

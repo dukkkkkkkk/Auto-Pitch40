@@ -209,7 +209,7 @@ public class Pitch40Module extends AbstractInventoryModule {
             endFlight();
             return;
         }
-        if (!elytra.tick()) {
+        if (!elytra.tick(!chestSwap.holdingChestplate())) {
             cycle.reset();
             return;
         }
@@ -220,7 +220,9 @@ public class Pitch40Module extends AbstractInventoryModule {
             endFlight();
             return;
         }
-        if (!BOT.isFallFlying()) {
+        // dukway keeps the chestplate on most ticks, so the server mostly says "not gliding"; its own glide
+        // starts take care of that, so don't treat it as a dropped glide mid-flight
+        if (!BOT.isFallFlying() && !(flying && ChestSwap.dukwayOn())) {
             cycle.reset();
             deployElytra();
             return;
@@ -239,8 +241,12 @@ public class Pitch40Module extends AbstractInventoryModule {
         );
         turns.sample(BOT.getY(), BOT.getVelocity().getY(), CONFIG.corridor.upperBound, maxTurnLead());
         steerPitch();
-        boolean firingRocket = submitFlightInput(wantsRocket());
-        chestSwap.tick(!firingRocket && !boostingWithRocket() && !sinking() && !elytra.busy() && rocketMove.isCompleted());
+        boolean rocketWanted = wantsRocket();
+        // a rocket fired with the dukway chestplate on wouldn't boost: put the elytra on this tick, fire next tick
+        boolean waitForElytra = rocketWanted && chestSwap.holdingChestplate();
+        boolean firingRocket = submitFlightInput(rocketWanted && !waitForElytra);
+        chestSwap.tick(!firingRocket && !waitForElytra && !boostingWithRocket() && !sinking()
+            && !elytra.busy() && !elytra.needsReplacement() && rocketMove.isCompleted());
     }
 
     private void checkDimension() {
@@ -484,6 +490,11 @@ public class Pitch40Module extends AbstractInventoryModule {
         debug("Rocket {} ({}) at Y {}, pitch {}", rockets.firedCount(), use.label, (int) BOT.getY(), (int) BOT.getPitch());
     }
 
+    /** Puts the elytra back on if the dukway chest swap has the chestplate on. */
+    void restoreElytra() {
+        chestSwap.restoreElytra();
+    }
+
     /** Schedule a launch to the upper bound. Runs once the bot is in control. */
     public void launchNow() {
         launcher.arm(true);
@@ -536,7 +547,8 @@ public class Pitch40Module extends AbstractInventoryModule {
             status.append(" | best peak Y ").append(Math.round(cycle.bestPeakY()));
         }
         if (CONFIG.chestSwap.enabled) {
-            status.append(" | chest swaps ").append(chestSwap.swapCount());
+            status.append(" | chest swaps (").append(CONFIG.chestSwap.mode.name().toLowerCase()).append(") ")
+                .append(chestSwap.swapCount());
             if (boostingWithRocket()) status.append(" (paused for rocket)");
         }
         return status.toString();

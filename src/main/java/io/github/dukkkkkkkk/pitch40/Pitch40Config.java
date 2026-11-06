@@ -99,6 +99,9 @@ public class Pitch40Config {
     public static final class ChestSwap {
         /** Keep elytra durability loss near zero by resetting the server's glide counter. */
         public boolean enabled = false;
+        /** quick: elytra stays on, a same-tick swap and glide restart every intervalTicks. dukway: chestplate on for
+         * intervalTicks, then the elytra for 1 tick with a glide start. */
+        public ChestSwapMode mode = ChestSwapMode.QUICK;
         /** Ticks between swaps. Must stay under 20, when gliding starts costing durability. */
         public int intervalTicks = 4;
         /** Hotbar slot (0-8) a chestplate is moved into if none is in the hotbar. Never the rocket slot. */
@@ -108,6 +111,11 @@ public class Pitch40Config {
          * Restarting the glide mid-boost can cut it short.
          */
         public boolean pauseForRockets = true;
+    }
+
+    public enum ChestSwapMode {
+        QUICK,
+        DUKWAY
     }
 
     public static final class AutoLog {
