@@ -60,6 +60,8 @@ public class Pitch40Module extends AbstractInventoryModule {
     private static final double STALL_SINK = 0.3;
     /** ...with less horizontal speed than this (blocks/tick). */
     private static final double STALL_HORIZONTAL_SPEED = 0.5;
+    /** At most this far under the lower bound before the bot points up and rockets without waiting. */
+    private static final double DEEP_UNDER = 20.0;
     /**
      * How far under the last peak a dive goes while under the band. 40 got back into the band fastest in an
      * elytra physics simulation and kept it there when climbs level off (60 let the whole cycle sink).
@@ -97,7 +99,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         CORRIDOR("holding height"),
         CLIMB("climb gain"),
         BOOST("boost"),
-        EMERGENCY("stall");
+        EMERGENCY("too low");
 
         final String label;
 
@@ -245,10 +247,10 @@ public class Pitch40Module extends AbstractInventoryModule {
         );
         turns.sample(BOT.getY(), BOT.getVelocity().getY(), CONFIG.corridor.upperBound, maxTurnLead());
         steerPitch();
-        boolean rocketWanted = wantsRocket();
+        RocketUse rocketWanted = rocketWanted();
         // a rocket fired with the dukway chestplate on wouldn't boost: put the elytra on this tick, fire next tick
-        boolean waitForElytra = rocketWanted && chestSwap.holdingChestplate();
-        boolean firingRocket = submitFlightInput(rocketWanted && !waitForElytra);
+        boolean waitForElytra = rocketWanted != null && chestSwap.holdingChestplate();
+        boolean firingRocket = submitFlightInput(waitForElytra ? null : rocketWanted);
         chestSwap.tick(!firingRocket && !waitForElytra && !boostingWithRocket() && !sinking()
             && !elytra.busy() && !elytra.needsReplacement() && rocketMove.isCompleted());
     }
@@ -323,7 +325,10 @@ public class Pitch40Module extends AbstractInventoryModule {
         var corridor = CONFIG.corridor;
         double y = BOT.getY();
         boolean anticipate = CONFIG.corridor.stayInBounds;
-        if (pitchingDown) {
+        if (tooLowToWait()) {
+            // too far under the band to keep cycling: point up and let the rockets lift it
+            pitchingDown = false;
+        } else if (pitchingDown) {
             // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak.
             // Under the band, a short dive under the peak: enough speed to climb, without sinking the whole cycle
             double target = diveFromY <= corridor.lowerBound
@@ -378,24 +383,51 @@ public class Pitch40Module extends AbstractInventoryModule {
 
     // ---- rockets ----
 
-    private boolean wantsRocket() {
-        if (CONFIG.rockets.mode == RocketMode.OFF || rocketCooldown > 0) return false;
-        boolean emergency = stalledUnderFloor();
-        if (!cycle.needsRocket && !emergency) return false;
-        if (rockets.inFlight()) return false;
-        if (emergency) return true;
+    /**
+     * Whether to fire a rocket this tick, and why, or null. From most to least urgent:
+     * <ul>
+     *   <li><b>too low:</b> more than {@link #deepUnderY() halfway} from the lower bound to the auto log height,
+     *       or stalled under the band. Fires straight away, no gap, no waiting for a climb.</li>
+     *   <li><b>under the band:</b> more than heightTolerance under the lower bound. Fires on a climb, keeping the gap,
+     *       whether or not a climb has peaked (a sinking bot's climbs may never peak).</li>
+     *   <li><b>the cycle asked for one:</b> a short climb, a boost turn or climb gain. Fires on a climb, keeping the gap.</li>
+     * </ul>
+     */
+    private @Nullable RocketUse rocketWanted() {
+        if (CONFIG.rockets.mode == RocketMode.OFF || rocketCooldown > 0) return null;
+        boolean urgent = tooLowToWait() || stalledUnderFloor();
+        boolean underBand = BOT.getY() < CONFIG.corridor.lowerBound - CONFIG.rockets.heightTolerance;
+        if (!cycle.needsRocket && !underBand && !urgent) return null;
+        if (rockets.inFlight()) return null;
+        if (urgent) return RocketUse.EMERGENCY;
 
         // normal rockets keep a gap between them
         if (Duration.between(lastRocketAt, Instant.now()).toMillis() < Math.max(0, CONFIG.rockets.minSecondsBetween) * 1000L) {
-            return false;
+            return null;
         }
         // spend it on a climb, and only when it actually adds speed along the look direction
         var velocity = BOT.getVelocity();
         boolean climbing = BOT.getPitch() < 0.0f || velocity.getY() > GlideCycle.VELOCITY_DEADBAND;
-        if (!climbing) return false;
+        if (!climbing) return null;
         var look = MathHelper.calculateViewVector(BOT.getYaw(), BOT.getPitch());
         double speedAlongLook = velocity.getX() * look.getX() + velocity.getY() * look.getY() + velocity.getZ() * look.getZ();
-        return speedAlongLook < ROCKET_GATE;
+        if (speedAlongLook >= ROCKET_GATE) return null;
+        if (!cycle.needsRocket) return RocketUse.CORRIDOR;
+        return cycle.rocketForBoost ? RocketUse.BOOST
+            : CONFIG.corridor.ceiling ? RocketUse.CORRIDOR
+            : RocketUse.CLIMB;
+    }
+
+    /**
+     * Halfway from the lower bound down to the auto log height (at most {@value #DEEP_UNDER} under): below this the
+     * bot stops cycling, points up and rockets without waiting, so it never sinks far enough to auto log.
+     */
+    private static double deepUnderY() {
+        return CONFIG.corridor.lowerBound - Math.min(DEEP_UNDER, Math.max(0.0, CONFIG.autoLog.blocksBelowLowerBound) / 2.0);
+    }
+
+    private boolean tooLowToWait() {
+        return BOT.getY() < deepUnderY();
     }
 
     /**
@@ -438,8 +470,8 @@ public class Pitch40Module extends AbstractInventoryModule {
     }
 
     /** Sends this tick's pitch (and yaw, and rocket click). Returns true if a rocket click was sent. */
-    private boolean submitFlightInput(boolean rocketWanted) {
-        Input click = rocketClick(rocketWanted);
+    private boolean submitFlightInput(@Nullable RocketUse rocketWanted) {
+        Input click = rocketClick(rocketWanted != null);
         var request = InputRequest.builder()
             .owner(this)
             .pitch(pitch)
@@ -449,10 +481,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         var future = INPUTS.submit(request.build());
         if (click == null) return false;
 
-        RocketUse use = !cycle.needsRocket ? RocketUse.EMERGENCY
-            : cycle.rocketForBoost ? RocketUse.BOOST
-            : CONFIG.corridor.ceiling ? RocketUse.CORRIDOR
-            : RocketUse.CLIMB;
+        RocketUse use = rocketWanted;
         future.addInputExecutedListener(f -> onRocketClickExecuted(f, use));
         return true;
     }
