@@ -61,11 +61,10 @@ final class GlideCycle {
      * Feed one tick of flight.
      *
      * @param ceiling   the upper bound, or {@link #NO_CEILING}
-     * @param floor     the lower bound: a climb that peaks under it always counts as short
      * @param climbGain no ceiling only: how far above the best peak each climb should reach
      * @return true when a climb just topped out short of the target height
      */
-    boolean sample(double y, double velocityY, RocketMode mode, double ceiling, double floor, double climbGain,
+    boolean sample(double y, double velocityY, RocketMode mode, double ceiling, double climbGain,
                    double tolerance, int climbsPerRocket) {
         toppedOut = false;
         if (!Double.isFinite(y) || !Double.isFinite(velocityY) || Double.isInfinite(ceiling)
@@ -96,17 +95,13 @@ final class GlideCycle {
         climbs++;
         // with no ceiling, aim climbGain above the best peak before this one; the first climb sets it
         double target = Double.isNaN(ceiling) ? bestPeakY + Math.max(0.0, climbGain) : ceiling;
-        // with a ceiling, only spend a rocket when climbs are actually getting lower, or peaking under the band
-        // altogether; climbs that are short but holding inside the band recover by themselves. Under the band
-        // they don't: they can level off there for good, so those always get a rocket
-        boolean declining = !Double.isNaN(lastPeakY) && peakY < lastPeakY - 1.0;
-        boolean underBand = peakY < floor;
-        boolean mustDecline = !Double.isNaN(ceiling);
+        // any climb more than tolerance short of the target gets a rocket on the next climb. Waiting for climbs to
+        // recover on their own doesn't work on servers where Pitch40 loses height: they level off short and the
+        // bot hovers near the lower bound (and rocketing early costs fewer rockets than pulling it back up later)
         lastPeakY = peakY;
         bestPeakY = Double.isNaN(bestPeakY) ? peakY : Math.max(bestPeakY, peakY);
 
-        boolean shortApex = mode != RocketMode.OFF && !Double.isNaN(target) && target - peakY > tolerance
-            && (!mustDecline || declining || underBand);
+        boolean shortApex = mode != RocketMode.OFF && !Double.isNaN(target) && target - peakY > tolerance;
         boolean boostTurn = mode == RocketMode.BOOST && climbs % climbsPerRocket == 0;
         if (shortApex || boostTurn) {
             needsRocket = true;

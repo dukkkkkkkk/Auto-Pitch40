@@ -72,7 +72,7 @@ public class Pitch40Config {
     public enum RocketMode {
         /** Free glide only. */
         OFF,
-        /** A rocket only when climbs fall short of the upper bound and keep getting lower, or on a stall. */
+        /** A rocket on the next climb whenever a climb tops out more than heightTolerance short of the upper bound. */
         KEEP,
         /** KEEP, plus a rocket every {@link Rockets#climbsPerRocket} climbs for speed. */
         BOOST
