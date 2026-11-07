@@ -14,6 +14,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.MoveToHotbarActio
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerCommandPacket;
+import org.jspecify.annotations.Nullable;
 
 import static com.zenith.Globals.CACHE;
 import static com.zenith.Globals.INVENTORY;
@@ -38,14 +39,26 @@ import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
 final class ChestSwap {
     private final Pitch40Module module;
     private final int rocketHotbarSlot;
+    /** An elytra loses durability after this many unbroken ticks of gliding. */
+    private static final int DURABILITY_TICKS = 20;
+    /** A due swap that's still waiting at this many ticks goes ahead even if other inventory clicks are running. */
+    private static final int FORCE_AT = 16;
+
     private int ticksSinceSwap = 0;
+    private boolean otherInventoryBusy = false;
     private int swaps = 0;
     private RequestFuture chestplateMove = RequestFuture.rejected;
     private final Notice noChestplate = new Notice();
 
+    /** Swaps that came 20+ ticks after the last one, so the elytra probably lost a point of durability. */
+    private int lateSwaps = 0;
+
     /** Dukway: the chestplate is on the chest slot (server side) and the elytra is in this hotbar slot. */
     private boolean holdingChestplate = false;
     private int heldHotbarIndex = -1;
+    /** Dukway: the stacks as they were when swapped, for the swap back (ZenithProxy's copy may have been resynced). */
+    private @Nullable ItemStack heldElytra = null;
+    private @Nullable ItemStack heldChestplate = null;
 
     ChestSwap(Pitch40Module module, int rocketHotbarSlot) {
         this.module = module;
@@ -59,9 +72,12 @@ final class ChestSwap {
     /**
      * Call once per gliding tick.
      *
-     * @param allowed false holds off: quick postpones a due swap; dukway puts the elytra back on and waits
+     * @param allowed            false holds off: quick postpones a due swap; dukway puts the elytra back on and waits
+     * @param otherInventoryBusy something else (like a rocket move) is mid-click; waited for, unless a swap is
+     *                           about to be too late to save durability
      */
-    void tick(boolean allowed) {
+    void tick(boolean allowed, boolean otherInventoryBusy) {
+        this.otherInventoryBusy = otherInventoryBusy;
         if (!CONFIG.chestSwap.enabled || CONFIG.chestSwap.mode != ChestSwapMode.DUKWAY) {
             // switched away from dukway mid-swap
             restoreElytra();
@@ -77,6 +93,7 @@ final class ChestSwap {
     private void tickQuick(boolean allowed) {
         if (++ticksSinceSwap < Math.max(1, CONFIG.chestSwap.intervalTicks)) return;
         if (!allowed || !readyToClick()) return;
+        if (ticksSinceSwap >= DURABILITY_TICKS) lateSwaps++;
 
         ItemStack elytra = Items.chest();
         if (!Items.isElytra(elytra)) return;
@@ -111,6 +128,7 @@ final class ChestSwap {
             restoreElytra();
             return;
         }
+        ticksSinceSwap++;
         if (!readyToClick()) return;
         ItemStack elytra = Items.chest();
         if (!Items.isElytra(elytra)) return;
@@ -122,6 +140,8 @@ final class ChestSwap {
         module.sendClientPacketAsync(swapClick(stateId(), MoveToHotbarAction.from(hotbarIndex), hotbarSlot, chestplate, elytra));
         holdingChestplate = true;
         heldHotbarIndex = hotbarIndex;
+        heldElytra = elytra;
+        heldChestplate = chestplate;
         ticksSinceSwap = 0;
         swaps++;
     }
@@ -134,10 +154,12 @@ final class ChestSwap {
         if (!holdingChestplate) return;
         holdingChestplate = false;
         int hotbarSlot = Items.HOTBAR_START + heldHotbarIndex;
-        // ZenithProxy's copy of the inventory was never changed, so it still shows the elytra on the chest slot
-        // and the chestplate in the hotbar: exactly what we're going back to
-        ItemStack elytra = Items.chest();
-        ItemStack chestplate = Items.slot(hotbarSlot);
+        // the stacks as they were when swapped: ZenithProxy's copy normally still shows them that way, but a server
+        // resync in between can show them swapped, which would make the predicted slots wrong
+        ItemStack elytra = heldElytra != null ? heldElytra : Items.chest();
+        ItemStack chestplate = heldChestplate != null ? heldChestplate : Items.slot(hotbarSlot);
+        heldElytra = null;
+        heldChestplate = null;
         module.sendClientPacketAsync(swapClick(stateId(), MoveToHotbarAction.from(heldHotbarIndex), hotbarSlot, elytra, chestplate));
         sendGlideStart();
         ticksSinceSwap = 0;
@@ -157,6 +179,10 @@ final class ChestSwap {
         return swaps;
     }
 
+    int lateCount() {
+        return lateSwaps;
+    }
+
     /** Clears per-flight state (putting the elytra back first); the swap count is kept. */
     void resetFlight() {
         restoreElytra();
@@ -167,6 +193,7 @@ final class ChestSwap {
     void reset() {
         resetFlight();
         swaps = 0;
+        lateSwaps = 0;
         noChestplate.clear();
     }
 
@@ -177,8 +204,14 @@ final class ChestSwap {
         return slot;
     }
 
+    /**
+     * Normally waits for any other inventory clicks to finish. When the swap is close to too late to save durability
+     * (FORCE_AT ticks), it goes ahead anyway; only an open container or an item on the cursor still stops it.
+     */
     private boolean readyToClick() {
-        return !busy() && !INVENTORY.hasActiveRequest() && Items.inventoryIdle();
+        if (!Items.inventoryIdle()) return false;
+        if (ticksSinceSwap >= FORCE_AT) return true;
+        return !busy() && !otherInventoryBusy && !INVENTORY.hasActiveRequest();
     }
 
     private static int stateId() {

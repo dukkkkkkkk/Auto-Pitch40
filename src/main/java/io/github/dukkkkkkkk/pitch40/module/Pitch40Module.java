@@ -226,7 +226,9 @@ public class Pitch40Module extends AbstractInventoryModule {
             endFlight();
             return;
         }
-        if (!elytra.tick(!chestSwap.holdingChestplate())) {
+        // while dukway has the chestplate on, the elytra is in the hotbar on purpose (and a server resync can show it
+        // there), so skip the worn-elytra checks until it's back
+        if (!chestSwap.holdingChestplate() && !elytra.tick(true)) {
             cycle.reset();
             return;
         }
@@ -246,8 +248,14 @@ public class Pitch40Module extends AbstractInventoryModule {
         // dukway keeps the chestplate on most ticks, so the server mostly says "not gliding"; its own glide
         // starts take care of that, so don't treat it as a dropped glide mid-flight
         if (!BOT.isFallFlying() && !(flying && ChestSwap.dukwayOn())) {
-            cycle.reset();
-            deployElytra();
+            if (flying) {
+                // dropped out of the glide mid-flight (the chest swap's glide restart can do this): get straight back
+                // in, and keep the climb/dive tracking, which a reset every few ticks would break
+                deployElytra(true);
+            } else {
+                cycle.reset();
+                deployElytra(false);
+            }
             return;
         }
         if (!flying && !tryStartFlight()) return;
@@ -269,7 +277,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         boolean waitForElytra = rocketWanted != null && chestSwap.holdingChestplate();
         boolean firingRocket = submitFlightInput(waitForElytra ? null : rocketWanted);
         chestSwap.tick(!firingRocket && !waitForElytra && !boostingWithRocket() && !sinking()
-            && !elytra.busy() && !elytra.needsReplacement() && rocketMove.isCompleted());
+            && !elytra.busy() && !elytra.needsReplacement(), !rocketMove.isCompleted());
     }
 
     private void checkDimension() {
@@ -283,10 +291,11 @@ public class Pitch40Module extends AbstractInventoryModule {
     // ---- flight ----
 
     /** Presses jump while falling so the bot starts gliding again. */
-    private void deployElytra() {
+    /** @param midFlight a flight is running, so re-open straight away instead of waiting to fall */
+    private void deployElytra(boolean midFlight) {
         if (!CONFIG.elytra.autoDeploy) return;
-        // only while actually falling, so jumping off something still behaves normally
-        if (BOT.getVelocity().getY() >= -GlideCycle.VELOCITY_DEADBAND) return;
+        // otherwise only while actually falling, so jumping off something still behaves normally
+        if (!midFlight && BOT.getVelocity().getY() >= -GlideCycle.VELOCITY_DEADBAND) return;
         if (BOT.isTouchingWater() || BOT.isTouchingLava()) return;
         // gliding starts on a fresh jump press, so alternate it each tick
         jumpHeld = !jumpHeld;
@@ -626,6 +635,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         if (CONFIG.chestSwap.enabled) {
             status.append(" | chest swaps (").append(CONFIG.chestSwap.mode.name().toLowerCase()).append(") ")
                 .append(chestSwap.swapCount());
+            if (chestSwap.lateCount() > 0) status.append(", ").append(chestSwap.lateCount()).append(" late");
             if (boostingWithRocket()) status.append(" (paused for rocket)");
         }
         return status.toString();
