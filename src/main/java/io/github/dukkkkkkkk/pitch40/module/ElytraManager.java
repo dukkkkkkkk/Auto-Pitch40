@@ -19,7 +19,8 @@ import static com.zenith.Globals.INVENTORY;
 import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
 
 /**
- * Watches the worn elytra: replaces it with the best spare when it runs low, and warns when it can't.
+ * Watches the worn elytra: replaces it with the next spare when it runs low (most-used first by default), and warns
+ * when it can't.
  */
 final class ElytraManager {
     /** An elytra can't glide at 1 durability left, so never swap at or below this. */
@@ -137,7 +138,7 @@ final class ElytraManager {
     }
 
     /**
-     * Swaps in the spare with the most durability once the worn elytra is down to the replace threshold,
+     * Swaps in the next spare (see {@link #bestSpareSlot}) once the worn elytra is down to the replace threshold,
      * or equips one if the chest slot is empty. A chestplate in the chest slot is left alone.
      *
      * <p>Clicks go spare, chest, spare: the spare is picked up, swapped onto the chest, and the old elytra is
@@ -171,15 +172,20 @@ final class ElytraManager {
         }
     }
 
-    /** Inventory slot of the usable spare with the most durability, or -1. */
+    /**
+     * Inventory slot of the next usable spare to wear, or -1. With useWornFirst, the one with the least durability
+     * left (still at least minSpareDurability), so part-used elytras get finished off and the fullest are saved
+     * for last. Otherwise the one with the most.
+     */
     private int bestSpareSlot() {
+        boolean wornFirst = CONFIG.elytra.useWornFirst;
         int bestSlot = -1;
-        int bestDurability = -1;
+        int bestDurability = wornFirst ? Integer.MAX_VALUE : -1;
         for (int slot = Items.MAIN_START; slot <= Items.HOTBAR_END; slot++) {
             var stack = Items.slot(slot);
             if (!isUsableSpare(stack)) continue;
             int durability = Items.durabilityLeft(stack);
-            if (durability > bestDurability) {
+            if (wornFirst ? durability < bestDurability : durability > bestDurability) {
                 bestDurability = durability;
                 bestSlot = slot;
             }

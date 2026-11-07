@@ -12,7 +12,7 @@ The bot swings between +40 pitch (diving to gain speed) and -40 pitch (climbing 
   - `keep`: a rocket on the next climb whenever a climb tops out more than `heightTolerance` short of the upper height (at most one per `gap`), so climbs keep reaching the top of the band. More than `heightTolerance` under the lower height, a rocket on each climb until it's back in. Halfway down to the auto log height (20 under by default) it stops cycling, points up and rockets without waiting, so it doesn't sink far enough to auto log
   - `boost`: as `keep`, plus a rocket every few climbs for speed
 - **Chest swap**: every few ticks it swaps a chestplate on and the elytra straight back, then restarts the glide, so the elytra takes almost no durability damage
-- **Elytra replacement**: swaps in the best spare elytra mid-flight when the worn one runs low
+- **Elytra replacement**: swaps in a spare elytra mid-flight when the worn one runs low, using up part-worn ones first and saving the fullest for last
 - **Auto regear**: when it's down to its second-to-last good elytra, it lands, places a shulker of XP bottles from the inventory, swaps spare rockets for XP, throws the XP to mend all the elytras, mines the shulker back up and takes off again
 - **Last elytra**: disconnects as soon as it's down to its last elytra, so that one stays full for the trip home
 - **Auto launch**: after the proxy connects, it takes off by itself and rockets up to the upper height, then starts flying
@@ -68,6 +68,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 elytra replace durability <n>` | 10 | Durability left at which it's replaced (minimum 2) |
 | `pitch40 elytras` | | Lists your elytras by durability: the worn one, then spares grouped like `9x full`, `4x 300`, `1x 160`. Spares too low to swap to are marked |
 | `pitch40 elytra minSpare <n>` | 10 | A spare needs at least this much durability before the bot will swap to it (and always more than the replace durability) |
+| `pitch40 elytra wornFirst on/off` | on | Swaps in the most-used spare first (least durability left, still above `minSpare`), so part-worn elytras get finished off and the fullest are saved for last. Off: fullest first |
 | `pitch40 elytra last on/off` | on | Disconnects as soon as it swaps onto its last elytra, so you keep one full elytra to fly home with. Needs at least one spare to start with. AutoReconnect is cancelled too unless `autoLog cancelReconnect` is off |
 | `pitch40 elytra warning <n>` | 20 | Warns at this durability when there's no spare left |
 | `pitch40 chestSwap on/off` | off | Chest swap for near-zero durability loss |

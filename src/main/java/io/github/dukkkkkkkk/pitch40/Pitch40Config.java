@@ -83,8 +83,13 @@ public class Pitch40Config {
     public static final class Elytra {
         /** Press jump while falling to (re)open the elytra. */
         public boolean autoDeploy = true;
-        /** Swap the worn elytra for the spare with the most durability when it gets low. */
+        /** Swap the worn elytra for a spare when it gets low. */
         public boolean autoReplace = true;
+        /**
+         * Replace with the most-used spare first (least durability left, still above minSpareDurability), saving the
+         * fullest for last. Off: the fullest first.
+         */
+        public boolean useWornFirst = true;
         /** Durability left at which the worn elytra is replaced. Minimum 2; an elytra stops working at 1. */
         public int replaceDurability = 10;
         /** A spare needs at least this much durability left before the bot will swap to it. */

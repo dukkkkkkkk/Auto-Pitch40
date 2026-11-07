@@ -88,6 +88,7 @@ public class Pitch40Command extends Command {
                 "elytra replace durability <durability>",
                 "elytra last on/off",
                 "elytra minSpare <durability>",
+                "elytra wornFirst on/off",
                 "elytras",
                 "elytra warning <durability>",
                 "chestSwap on/off",
@@ -364,6 +365,14 @@ public class Pitch40Command extends Command {
                     c.getSource().getEmbed()
                         .title("Replace Durability Set");
                 }))))
+            .then(literal("wornFirst").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.elytra.useWornFirst = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Worn First " + toggleStrCaps(CONFIG.elytra.useWornFirst))
+                    .description(CONFIG.elytra.useWornFirst
+                        ? "Swaps in the most-used spare first, saving the fullest for last"
+                        : "Swaps in the fullest spare first");
+            })))
             .then(literal("minSpare").then(argument("durability", integer(2, 432)).executes(c -> {
                 CONFIG.elytra.minSpareDurability = getInteger(c, "durability");
                 c.getSource().getEmbed()
@@ -631,6 +640,7 @@ public class Pitch40Command extends Command {
             .addField("Rockets Used", module.rocketUseText() + " | at least " + rockets.minSecondsBetween + "s apart")
             .addField("Auto Deploy", toggleStr(elytra.autoDeploy))
             .addField("Elytra Replace", toggleStr(elytra.autoReplace) + " at " + elytra.replaceDurability
+                + (elytra.useWornFirst ? " | most-used first" : " | fullest first")
                 + " | " + module.spareElytraCount() + " usable spares (min " + module.minSpareDurability() + ")")
             .addField("Last Elytra", toggleStr(elytra.lastElytra) + (elytra.lastElytra ? " | disconnects on the last full elytra" : ""))
             .addField("Durability Warning", elytra.lowDurabilityWarning)
