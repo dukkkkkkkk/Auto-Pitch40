@@ -11,6 +11,7 @@ import io.github.dukkkkkkkk.pitch40.Pitch40Config.ChestSwapMode;
 import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
 import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
+import io.github.dukkkkkkkk.pitch40.util.DiscordStatus;
 import io.github.dukkkkkkkk.pitch40.util.Quadrant;
 
 import java.time.Duration;
@@ -110,6 +111,7 @@ public class Pitch40Command extends Command {
                 "coords on/off",
                 "coords interval <hours>",
                 "coords now",
+                "discordStatus on/off",
                 "whisper on/off",
                 "whisper add <keyword>",
                 "whisper remove <keyword>",
@@ -202,6 +204,14 @@ public class Pitch40Command extends Command {
                 return OK;
             }))
             .then(coordsCommands())
+            .then(literal("discordStatus").then(argument("toggle", toggle()).executes(c -> {
+                CONFIG.discordStatus.enabled = getToggle(c, "toggle");
+                c.getSource().getEmbed()
+                    .title("Discord Status " + toggleStrCaps(CONFIG.discordStatus.enabled))
+                    .description(CONFIG.discordStatus.enabled
+                        ? "Shows distance travelled this session, updated once a minute"
+                        : "Handing the status back to ZenithProxy within a minute");
+            })))
             .then(whisperCommands())
             .then(literal("priority").then(argument("priority", integer()).executes(c -> {
                 CONFIG.priority = getInteger(c, "priority");
@@ -643,6 +653,8 @@ public class Pitch40Command extends Command {
                 + " hours" + (CONFIG.coordReport.enabled
                     ? " | next in " + formatDuration(MODULE.get(CoordsModule.class).timeUntilNextReport())
                     : ""))
+            .addField("Discord Status", toggleStr(CONFIG.discordStatus.enabled)
+                + (CONFIG.discordStatus.enabled ? " | " + DiscordStatus.formatDistance(DiscordStatus.sessionDistance()) + " this session" : ""))
             .addField("Whisper Reply", toggleStr(CONFIG.whisperReply.enabled) + " | keywords: "
                 + (CONFIG.whisperReply.keywords.isEmpty() ? "none" : String.join(", ", CONFIG.whisperReply.keywords))
                 + (CONFIG.whisperReply.publicChat ? " | whisper or public chat" : " | whisper only")

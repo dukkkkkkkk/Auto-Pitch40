@@ -23,6 +23,7 @@ public class Pitch40Config {
     public final Launch launch = new Launch();
     public final Regear regear = new Regear();
     public final CoordReport coordReport = new CoordReport();
+    public final DiscordStatus discordStatus = new DiscordStatus();
     public final WhisperReply whisperReply = new WhisperReply();
 
     public static final class Corridor {
@@ -156,6 +157,16 @@ public class Pitch40Config {
         public int delaySeconds = 5;
         /** Degrees above level to climb at while rocketing up (10-90). */
         public float pitch = 60.0f;
+    }
+
+    public static final class DiscordStatus {
+        /**
+         * Show distance travelled this session in the Discord bot's status, updated once a minute. Takes over the
+         * status from ZenithProxy (switching its managePresence off) while on.
+         */
+        public boolean enabled = true;
+        /** Set by the plugin: it switched ZenithProxy's managePresence off and should switch it back on. */
+        public boolean tookOverZenithStatus = false;
     }
 
     public static final class CoordReport {

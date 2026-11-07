@@ -6,6 +6,7 @@ import com.zenith.plugin.api.ZenithProxyPlugin;
 import io.github.dukkkkkkkk.pitch40.command.Pitch40Command;
 import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
+import io.github.dukkkkkkkk.pitch40.util.DiscordStatus;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 
 @Plugin(
@@ -29,5 +30,6 @@ public class Pitch40Plugin implements ZenithProxyPlugin {
         Pitch40Module.registerReconnectGuard();
         pluginAPI.registerModule(new CoordsModule());
         pluginAPI.registerCommand(new Pitch40Command());
+        DiscordStatus.start();
     }
 }
