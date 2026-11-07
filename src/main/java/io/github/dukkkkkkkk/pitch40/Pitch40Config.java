@@ -144,8 +144,9 @@ public class Pitch40Config {
         /**
          * When the bot is down to its second-to-last good elytra, land, place the shulker of XP bottles from the
          * inventory, take XP out, mend the elytras (they need Mending), mine the shulker back up and take off.
+         * Off by default: not tested in game yet.
          */
-        public boolean enabled = true;
+        public boolean enabled = false;
         /** Rockets to keep when putting spare rockets into the shulker to make room for XP. */
         public int keepRockets = 128;
     }

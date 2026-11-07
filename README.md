@@ -76,7 +76,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 chestSwap interval <ticks>` | 4 | Ticks between swaps (1-19) |
 | `pitch40 chestSwap pauseForRockets on/off` | on | Stops swapping while a rocket is boosting so the elytra stays on for the whole boost, then goes back to swapping |
 | `pitch40 chestSwap slot <0-8>` | 7 | Hotbar slot a chestplate is moved into if none is in the hotbar |
-| `pitch40 regear on/off` | on | When the bot gets down to its second-to-last good elytra (one spare left), it lands with the pathfinder (which finds a safe spot), places the XP shulker next to itself, puts spare rockets in and takes XP out, throws the XP straight down to mend every elytra (they need Mending; ZenithProxy's AutoMend is switched on for it), mines the shulker back up and launches. Needs a shulker with XP bottles in the inventory, and no other shulker of the same colour |
+| `pitch40 regear on/off` | off | When the bot gets down to its second-to-last good elytra (one spare left), it lands with the pathfinder (which finds a safe spot), places the XP shulker next to itself, puts spare rockets in and takes XP out, throws the XP straight down to mend every elytra (they need Mending; ZenithProxy's AutoMend is switched on for it), mines the shulker back up and launches. Needs a shulker with XP bottles in the inventory, and no other shulker of the same colour |
 | `pitch40 regear now` | | Regears straight away |
 | `pitch40 regear keepRockets <count>` | 128 | Rockets to keep when putting spares into the shulker |
 | `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the upper height |
