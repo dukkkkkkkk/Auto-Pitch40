@@ -83,6 +83,7 @@ public class Pitch40Command extends Command {
                 "rockets heightTolerance <blocks>",
                 "rockets climbsPerRocket <count>",
                 "rockets gap <seconds>",
+                "rockets lowWarning <count>",
                 "elytra autoDeploy on/off",
                 "elytra replace on/off",
                 "elytra replace durability <durability>",
@@ -102,6 +103,7 @@ public class Pitch40Command extends Command {
                 "regear keepRockets <count>",
                 "launch on/off",
                 "launch now",
+                "launch height <y>/upper",
                 "launch pitch <degrees up>",
                 "launch delay <seconds>",
                 "autoLog on/off",
@@ -334,6 +336,12 @@ public class Pitch40Command extends Command {
                 c.getSource().getEmbed()
                     .title("Height Tolerance Set");
             })))
+            .then(literal("lowWarning").then(argument("count", integer(0, 2304)).executes(c -> {
+                CONFIG.rockets.lowWarning = getInteger(c, "count");
+                c.getSource().getEmbed()
+                    .title("Low Rocket Warning Set")
+                    .description("Warns in Discord at " + CONFIG.rockets.lowWarning + " rockets or fewer, and when they run out");
+            })))
             .then(literal("gap").then(argument("seconds", integer(0, 600)).executes(c -> {
                 CONFIG.rockets.minSecondsBetween = getInteger(c, "seconds");
                 c.getSource().getEmbed()
@@ -483,7 +491,7 @@ public class Pitch40Command extends Command {
                 c.getSource().getEmbed()
                     .title("Launch " + toggleStrCaps(CONFIG.launch.enabled))
                     .description(CONFIG.launch.enabled
-                        ? "After connecting, the bot takes off and rockets up to Y " + (int) CONFIG.corridor.upperBound
+                        ? "After connecting, the bot takes off and rockets up to Y " + (int) MODULE.get(Pitch40Module.class).launchTargetY()
                         : "The bot has to be gliding before Pitch40 starts");
             }))
             .then(literal("now").executes(c -> {
@@ -498,9 +506,32 @@ public class Pitch40Command extends Command {
                     .title("Launching")
                     .description(Proxy.getInstance().hasActivePlayer()
                         ? "Takes off once you disconnect from the proxy (within 2 minutes)"
-                        : "Taking off to Y " + (int) CONFIG.corridor.upperBound);
+                        : "Taking off to Y " + (int) MODULE.get(Pitch40Module.class).launchTargetY());
                 return OK;
             }))
+            .then(literal("height")
+                .then(literal("upper").executes(c -> {
+                    CONFIG.launch.height = 0.0;
+                    c.getSource().getEmbed()
+                        .title("Launch Height: Upper Bound")
+                        .description("Takes off to Y " + (int) CONFIG.corridor.upperBound);
+                }))
+                .then(argument("y", doubleArg(MIN_Y, MAX_Y)).executes(c -> {
+                    double height = getDouble(c, "y");
+                    if (height <= CONFIG.corridor.lowerBound) {
+                        c.getSource().getEmbed()
+                            .title("Error")
+                            .description("The launch height has to be above the lower bound (" + CONFIG.corridor.lowerBound + ")");
+                        return ERROR;
+                    }
+                    CONFIG.launch.height = height;
+                    c.getSource().getEmbed()
+                        .title("Launch Height Set")
+                        .description("Takes off to Y " + (int) height + ", " + (int) (height - CONFIG.corridor.lowerBound)
+                            + " above the lower bound. About " + Math.round((height - CONFIG.corridor.lowerBound) / 35.0)
+                            + " rockets per launch from the lower bound");
+                    return OK;
+                })))
             .then(literal("pitch").then(argument("degrees", floatArg(10f, 90f)).executes(c -> {
                 CONFIG.launch.pitch = getFloat(c, "degrees");
                 c.getSource().getEmbed()
@@ -652,7 +683,7 @@ public class Pitch40Command extends Command {
                 + (chestSwap.pauseForRockets ? " | pauses for rockets" : ""))
             .addField("Regear", toggleStr(CONFIG.regear.enabled) + " | on the second-to-last good elytra | keeps "
                 + CONFIG.regear.keepRockets + " rockets")
-            .addField("Launch", toggleStr(CONFIG.launch.enabled) + " | to Y " + (int) CONFIG.corridor.upperBound
+            .addField("Launch", toggleStr(CONFIG.launch.enabled) + " | to Y " + (int) module.launchTargetY()
                 + " | " + Math.round(CONFIG.launch.pitch) + " deg up | " + CONFIG.launch.delaySeconds + "s after connecting")
             .addField("Auto Log", toggleStr(CONFIG.autoLog.enabled)
                 + " | under Y " + (int) (CONFIG.corridor.lowerBound - CONFIG.autoLog.blocksBelowLowerBound)

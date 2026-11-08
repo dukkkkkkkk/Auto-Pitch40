@@ -2,6 +2,7 @@ package io.github.dukkkkkkkk.pitch40.module;
 
 import com.github.rfresh2.EventConsumer;
 import com.zenith.Proxy;
+import com.zenith.discord.Embed;
 import com.zenith.event.client.ClientBotTick;
 import com.zenith.event.client.ClientOnlineEvent;
 import com.zenith.feature.player.ClickResult;
@@ -60,6 +61,8 @@ public class Pitch40Module extends AbstractInventoryModule {
     private static final double STALL_SINK = 0.3;
     /** ...with less horizontal speed than this (blocks/tick). */
     private static final double STALL_HORIZONTAL_SPEED = 0.5;
+    /** Under-band dives stop this far above the too-low zone. */
+    private static final double TOO_LOW_MARGIN = 5.0;
     /** At most this far under the lower bound before the bot points up and rockets without waiting. */
     private static final double DEEP_UNDER = 20.0;
     /**
@@ -114,6 +117,9 @@ public class Pitch40Module extends AbstractInventoryModule {
 
     private final Notice waitingToStart = new Notice();
     private final Notice noRockets = new Notice();
+    private final Notice lowRockets = new Notice();
+    private final Notice outOfRockets = new Notice();
+    private int rocketCheckTicks = 0;
 
     public Pitch40Module() {
         super(HandRestriction.EITHER, configuredRocketSlot());
@@ -203,6 +209,8 @@ public class Pitch40Module extends AbstractInventoryModule {
             regear.cancel();
             return;
         }
+
+        checkRocketSupply();
 
         // landed to regear: it drives the bot until it's done, then take off again
         if (regear.active()) {
@@ -357,8 +365,9 @@ public class Pitch40Module extends AbstractInventoryModule {
         } else if (pitchingDown) {
             // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak.
             // Under the band, a short dive under the peak: enough speed to climb, without sinking the whole cycle
+            // ...but never into the too-low zone, where every dive would set off emergency rockets
             double target = diveFromY <= corridor.lowerBound
-                ? diveFromY - Math.min(corridor.diveDepth, UNDER_BAND_DIVE)
+                ? Math.max(diveFromY - Math.min(corridor.diveDepth, UNDER_BAND_DIVE), deepUnderY() + TOO_LOW_MARGIN)
                 : corridor.ceiling
                     ? corridor.lowerBound
                     : Math.max(corridor.lowerBound, diveFromY - corridor.diveDepth);
@@ -452,8 +461,48 @@ public class Pitch40Module extends AbstractInventoryModule {
         return CONFIG.corridor.lowerBound - Math.min(DEEP_UNDER, Math.max(0.0, CONFIG.autoLog.blocksBelowLowerBound) / 2.0);
     }
 
+    /**
+     * Too low to keep cycling, and there are rockets to climb out with. Without rockets, pointing up would only
+     * stall it, so it keeps doing Pitch40, the gentlest way down, and auto log catches it at the bottom.
+     */
     private boolean tooLowToWait() {
-        return BOT.getY() < deepUnderY();
+        return BOT.getY() < deepUnderY() && CONFIG.rockets.mode != RocketMode.OFF && rocketCount() > 0;
+    }
+
+    /** Warns in Discord once when rockets get low, and once when they run out. Checked once a second. */
+    private void checkRocketSupply() {
+        if (++rocketCheckTicks < 20) return;
+        rocketCheckTicks = 0;
+        if (CONFIG.rockets.mode == RocketMode.OFF) return;
+        int count = rocketCount();
+        if (count == 0) {
+            if (outOfRockets.show()) {
+                warn("Out of firework rockets");
+                discordNotification(Embed.builder()
+                    .title("Out of rockets")
+                    .description("Pitch40 carries on without them and glides down slowly; auto log disconnects it if it gets too low")
+                    .errorColor());
+            }
+            return;
+        }
+        outOfRockets.clear();
+        if (count <= CONFIG.rockets.lowWarning) {
+            if (lowRockets.show()) {
+                warn("Only {} firework rockets left", count);
+                discordNotification(Embed.builder()
+                    .title("Rockets low")
+                    .description(count + " rockets left")
+                    .addField("Position", Math.round(BOT.getX()) + ", " + Math.round(BOT.getY()) + ", " + Math.round(BOT.getZ()))
+                    .primaryColor());
+            }
+        } else {
+            lowRockets.clear();
+        }
+    }
+
+    /** Where a launch climbs to: the launch height setting, or the upper bound. */
+    public double launchTargetY() {
+        return Launcher.targetY();
     }
 
     /**
@@ -684,6 +733,8 @@ public class Pitch40Module extends AbstractInventoryModule {
         elytra.reset();
         chestSwap.reset();
         noRockets.clear();
+        lowRockets.clear();
+        outOfRockets.clear();
         lastDimension = null;
         rocketUses.clear();
         lastRocketAt = Instant.EPOCH;

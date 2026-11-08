@@ -63,6 +63,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 rockets heightTolerance <blocks>` | 10 | How far under the upper height a climb may top out before a rocket is spent. Higher saves rockets but flies lower |
 | `pitch40 rockets climbsPerRocket <count>` | 1 | Boost only: a rocket every Nth climb |
 | `pitch40 rockets gap <seconds>` | 30 | Least time between rockets, except launches and stalls |
+| `pitch40 rockets lowWarning <count>` | 32 | Warns in Discord when this many rockets or fewer are left, and again when they run out. Out of rockets, it keeps doing Pitch40 and glides down slowly instead of pointing up and stalling |
 | `pitch40 elytra autoDeploy on/off` | on | Reopens the elytra while falling |
 | `pitch40 elytra replace on/off` | on | Swaps in a spare elytra when the worn one runs low |
 | `pitch40 elytra replace durability <n>` | 10 | Durability left at which it's replaced (minimum 2) |
@@ -82,6 +83,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 regear keepRockets <count>` | 128 | Rockets to keep when putting spares into the shulker |
 | `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the upper height |
 | `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |
+| `pitch40 launch height <y>` | upper bound | Height to climb to when taking off or taking over. Set it above the lower bound to give the bot room to sink before it needs rockets (each ~35 blocks is about one rocket). `launch height upper` goes back to the upper bound |
 | `pitch40 launch pitch <degrees>` | 60 | How steeply it climbs while rocketing up (10-90 degrees above level) |
 | `pitch40 launch delay <seconds>` | 5 | Wait after connecting before taking off, so the world has loaded |
 | `pitch40 autoLog on/off` | on | Disconnects if the bot glides or falls too far under the lower height, and when it's falling within 16 blocks of the bottom of the world (the void), whatever the bounds are. Checked every tick the bot is in control, whether it's flying, waiting to start, launching or pathfinding. It can't act while you're logged into the proxy, since your client is in control then |

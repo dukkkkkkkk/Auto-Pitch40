@@ -80,8 +80,9 @@ final class Launcher {
         };
     }
 
+    /** The launch height setting, or the upper bound when that's 0. */
     static double targetY() {
-        return CONFIG.corridor.upperBound;
+        return CONFIG.launch.height > 0 ? CONFIG.launch.height : CONFIG.corridor.upperBound;
     }
 
     /**

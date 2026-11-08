@@ -67,6 +67,8 @@ public class Pitch40Config {
         public int climbsPerRocket = 1;
         /** Least time between rockets, except launches and stalls. Stops it burning through rockets. */
         public int minSecondsBetween = 30;
+        /** Warn in Discord when this many rockets or fewer are left (and again when they run out). */
+        public int lowWarning = 32;
         /** Hotbar slot (0-8) rockets are moved into when none are held. Read at startup. */
         public int hotbarSlot = 8;
     }
@@ -159,6 +161,11 @@ public class Pitch40Config {
     public static final class Launch {
         /** After the proxy connects, take off and rocket up to the upper bound, then start Pitch40. */
         public boolean enabled = true;
+        /**
+         * Height to climb to when taking off or taking over. 0 means the upper bound. Set it above the lower bound to
+         * give the bot room to sink before it needs rockets, e.g. 200 above it.
+         */
+        public double height = 0.0;
         /** Seconds to wait after connecting before taking off, so the world around the bot has loaded. */
         public int delaySeconds = 5;
         /** Degrees above level to climb at while rocketing up (10-90). */
