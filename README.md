@@ -94,7 +94,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 coords on/off` | on | Posts the bot's coords to Discord and the terminal on an interval. Works whether or not Pitch40 is on |
 | `pitch40 coords interval <hours>` | 24 | Hours between reports |
 | `pitch40 coords now` | | Sends a report straight away and restarts the timer |
-| `pitch40 discordStatus on/off` | on | The Discord bot's status shows distance travelled since it last connected, like `2b2t [01:05:12] \| 12,345 blocks`, updated once a minute. Takes over the status from ZenithProxy (its `managePresence` is switched off while this is on, and back on when you turn this off) |
+| `pitch40 discordStatus on/off` | on | The Discord bot's status shows distance travelled since it last connected, like `2b2t [01:05:12] \| 12,345 blocks`, switching every 30 seconds with the current coords, like `2b2t [01:05:42] \| -1300123, 1502, -29999951`. Takes over the status from ZenithProxy (its `managePresence` is switched off while this is on, and back on when you turn this off) |
+| `pitch40 discordStatus coords on/off` | on | Include the current coords in the status. Off shows distance only |
 | `pitch40 whisper on/off` | on | Whispers the position back when a whitelisted player whispers a keyword |
 | `pitch40 whisper add <keyword>` | eta, current | Adds a keyword. It can be anywhere in the message as a whole word, in any case, so client prefixes and suffixes like `> current \| Hackware [a7a25b9f]` still work. `eta` doesn't match inside `beta` |
 | `pitch40 whisper remove <keyword>` | | Removes a keyword |

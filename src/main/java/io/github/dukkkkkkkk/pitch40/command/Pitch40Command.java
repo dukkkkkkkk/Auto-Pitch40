@@ -115,6 +115,7 @@ public class Pitch40Command extends Command {
                 "coords interval <hours>",
                 "coords now",
                 "discordStatus on/off",
+                "discordStatus coords on/off",
                 "whisper on/off",
                 "whisper add <keyword>",
                 "whisper remove <keyword>",
@@ -207,14 +208,25 @@ public class Pitch40Command extends Command {
                 return OK;
             }))
             .then(coordsCommands())
-            .then(literal("discordStatus").then(argument("toggle", toggle()).executes(c -> {
-                CONFIG.discordStatus.enabled = getToggle(c, "toggle");
-                c.getSource().getEmbed()
-                    .title("Discord Status " + toggleStrCaps(CONFIG.discordStatus.enabled))
-                    .description(CONFIG.discordStatus.enabled
-                        ? "Shows distance travelled this session, updated once a minute"
-                        : "Handing the status back to ZenithProxy within a minute");
-            })))
+            .then(literal("discordStatus")
+                .then(argument("toggle", toggle()).executes(c -> {
+                    CONFIG.discordStatus.enabled = getToggle(c, "toggle");
+                    c.getSource().getEmbed()
+                        .title("Discord Status " + toggleStrCaps(CONFIG.discordStatus.enabled))
+                        .description(CONFIG.discordStatus.enabled
+                            ? (CONFIG.discordStatus.showCoords
+                                ? "Switches between distance travelled this session and the current coords every 30 seconds"
+                                : "Shows distance travelled this session, updated every 30 seconds")
+                            : "Handing the status back to ZenithProxy within a minute");
+                }))
+                .then(literal("coords").then(argument("toggle", toggle()).executes(c -> {
+                    CONFIG.discordStatus.showCoords = getToggle(c, "toggle");
+                    c.getSource().getEmbed()
+                        .title("Discord Status Coords " + toggleStrCaps(CONFIG.discordStatus.showCoords))
+                        .description(CONFIG.discordStatus.showCoords
+                            ? "The status switches between distance and the current coords every 30 seconds"
+                            : "The status shows distance only");
+                }))))
             .then(whisperCommands())
             .then(literal("priority").then(argument("priority", integer()).executes(c -> {
                 CONFIG.priority = getInteger(c, "priority");
@@ -695,7 +707,8 @@ public class Pitch40Command extends Command {
                     ? " | next in " + formatDuration(MODULE.get(CoordsModule.class).timeUntilNextReport())
                     : ""))
             .addField("Discord Status", toggleStr(CONFIG.discordStatus.enabled)
-                + (CONFIG.discordStatus.enabled ? " | " + DiscordStatus.formatDistance(DiscordStatus.sessionDistance()) + " this session" : ""))
+                + (CONFIG.discordStatus.enabled ? " | " + DiscordStatus.formatDistance(DiscordStatus.sessionDistance()) + " this session"
+                    + (CONFIG.discordStatus.showCoords ? " | coords on" : "") : ""))
             .addField("Whisper Reply", toggleStr(CONFIG.whisperReply.enabled) + " | keywords: "
                 + (CONFIG.whisperReply.keywords.isEmpty() ? "none" : String.join(", ", CONFIG.whisperReply.keywords))
                 + (CONFIG.whisperReply.publicChat ? " | whisper or public chat" : " | whisper only")

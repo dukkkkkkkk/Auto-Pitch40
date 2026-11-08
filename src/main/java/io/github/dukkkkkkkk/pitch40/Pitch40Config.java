@@ -178,6 +178,8 @@ public class Pitch40Config {
          * status from ZenithProxy (switching its managePresence off) while on.
          */
         public boolean enabled = true;
+        /** Switch the status between distance and the current coords every 30 seconds. Off: distance only. */
+        public boolean showCoords = true;
         /** Set by the plugin: it switched ZenithProxy's managePresence off and should switch it back on. */
         public boolean tookOverZenithStatus = false;
     }
