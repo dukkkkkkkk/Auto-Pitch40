@@ -103,6 +103,7 @@ public class Pitch40Command extends Command {
                 "regear on/off",
                 "regear now",
                 "regear keepRockets <count>",
+                "startWhenConnected <seconds>/off",
                 "launch on/off",
                 "launch now",
                 "launch height <y>/upper",
@@ -140,6 +141,20 @@ public class Pitch40Command extends Command {
                 // say what happens next, so "nothing happened" always has an answer
                 if (CONFIG.enabled) embed.description(module.status());
             }))
+            .then(literal("startWhenConnected")
+                .then(literal("off").executes(c -> {
+                    CONFIG.startWhenConnected.enabled = false;
+                    c.getSource().getEmbed()
+                        .title("Start When Connected Off");
+                }))
+                .then(argument("seconds", integer(0, 3600)).executes(c -> {
+                    CONFIG.startWhenConnected.enabled = true;
+                    CONFIG.startWhenConnected.delaySeconds = getInteger(c, "seconds");
+                    c.getSource().getEmbed()
+                        .title("Start When Connected On")
+                        .description("Pitch40 turns on " + CONFIG.startWhenConnected.delaySeconds
+                            + "s after the bot gets into the server (past the queue), and launches if it needs to");
+                })))
             .then(boundsCommand())
             .then(lowerCommand())
             .then(ceilingCommand())
@@ -682,7 +697,8 @@ public class Pitch40Command extends Command {
         var chestSwap = CONFIG.chestSwap;
         embed
             .primaryColor()
-            .addField("Pitch40", toggleStr(CONFIG.enabled))
+            .addField("Pitch40", toggleStr(CONFIG.enabled)
+                + (CONFIG.startWhenConnected.enabled ? " | starts " + CONFIG.startWhenConnected.delaySeconds + "s after connecting" : ""))
             .addField("Status", module.status())
             .addField("Bounds", corridor.ceiling
                 ? corridor.lowerBound + " - " + corridor.upperBound

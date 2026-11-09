@@ -21,6 +21,7 @@ public class Pitch40Config {
     public final ChestSwap chestSwap = new ChestSwap();
     public final AutoLog autoLog = new AutoLog();
     public final Launch launch = new Launch();
+    public final StartWhenConnected startWhenConnected = new StartWhenConnected();
     public final Regear regear = new Regear();
     public final CoordReport coordReport = new CoordReport();
     public final DiscordStatus discordStatus = new DiscordStatus();
@@ -170,6 +171,12 @@ public class Pitch40Config {
         public int delaySeconds = 5;
         /** Degrees above level to climb at while rocketing up (10-90). */
         public float pitch = 60.0f;
+    }
+
+    public static final class StartWhenConnected {
+        /** Turn Pitch40 on delaySeconds after the bot gets into the server (past the queue), if it's off. */
+        public boolean enabled = false;
+        public int delaySeconds = 10;
     }
 
     public static final class DiscordStatus {
