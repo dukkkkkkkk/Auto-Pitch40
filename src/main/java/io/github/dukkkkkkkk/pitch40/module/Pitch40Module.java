@@ -122,6 +122,10 @@ public class Pitch40Module extends AbstractInventoryModule {
     private @Nullable DimensionData lastDimension = null;
 
     private final Notice waitingToStart = new Notice();
+    /** A force start is pending until this time: start flying without waiting for height or a fall. */
+    private volatile Instant forceStartUntil = Instant.EPOCH;
+    private int forceOpenCooldown = 0;
+    private static final Duration FORCE_START_TIMEOUT = Duration.ofMinutes(2);
     private final Notice noRockets = new Notice();
     private final Notice lowRockets = new Notice();
     private final Notice outOfRockets = new Notice();
@@ -235,9 +239,16 @@ public class Pitch40Module extends AbstractInventoryModule {
             return;
         }
         if (launcher.active() && launcher.tick()) return;
+        if (forceOpenCooldown > 0) forceOpenCooldown--;
         if (BOT.isOnGround()) {
             if (flying) info("Landed, Pitch40 stopped");
             endFlight();
+            if (forceStartPending()) {
+                // on the ground: a force start is a launch, even if it's standing above the launch height
+                clearForceStart();
+                info("Force start: launching");
+                launcher.arm(true, true);
+            }
             return;
         }
         // while dukway has the chestplate on, the elytra is in the hotbar on purpose (and a server resync can show it
@@ -268,11 +279,22 @@ public class Pitch40Module extends AbstractInventoryModule {
                 deployElytra(true);
             } else {
                 cycle.reset();
-                deployElytra(false);
+                if (forceStartPending()) {
+                    // don't wait to be falling: open it now (spaced out, since a second glide start closes it again)
+                    if (forceOpenCooldown == 0) {
+                        forceOpenCooldown = 20;
+                        String problem = forceOpenElytra();
+                        if (problem != null) debug("Force start: can't open the elytra yet: {}", problem);
+                    }
+                } else {
+                    deployElytra(false);
+                }
             }
             return;
         }
-        if (!flying && !tryStartFlight()) return;
+        // already flying: nothing to force, and a leftover force start mustn't launch it after a landing later
+        if (flying && forceStartPending()) clearForceStart();
+        if (!flying && !tryStartFlight(forceStartPending())) return;
 
         // sample first so a climb that just topped out can turn into a dive this tick
         cycle.sample(
@@ -320,8 +342,10 @@ public class Pitch40Module extends AbstractInventoryModule {
             .build());
     }
 
-    private boolean tryStartFlight() {
-        if (!canStartFlight()) {
+    /** @param force start even below the starting height without rockets */
+    private boolean tryStartFlight(boolean force) {
+        if (force) clearForceStart();
+        if (!force && !canStartFlight()) {
             if (waitingToStart.show()) {
                 int startY = (int) (CONFIG.corridor.ceiling
                     ? Math.max(CONFIG.corridor.upperBound, CONFIG.corridor.lowerBound + START_MARGIN)
@@ -682,6 +706,23 @@ public class Pitch40Module extends AbstractInventoryModule {
         }
         info("Force opened the elytra at Y {}", (int) BOT.getY());
         return null;
+    }
+
+    /**
+     * Starts flying as soon as the bot is in control: on the ground it launches, in the air it opens the elytra
+     * straight away, and gliding it starts the cycle even below the starting height. Pending for 2 minutes.
+     */
+    public void forceStart() {
+        forceStartUntil = Instant.now().plus(FORCE_START_TIMEOUT);
+        forceOpenCooldown = 0;
+    }
+
+    private boolean forceStartPending() {
+        return Instant.now().isBefore(forceStartUntil);
+    }
+
+    private void clearForceStart() {
+        forceStartUntil = Instant.EPOCH;
     }
 
     /** Start a regear now, or say why it can't. Returns null if it started. */

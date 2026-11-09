@@ -13,8 +13,9 @@ import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.CONFIG;
 import static io.github.dukkkkkkkk.pitch40.Pitch40Plugin.LOG;
 
 /**
- * {@code pitch40 startWhenConnected <seconds>}: turns Pitch40 on a set time after the bot gets into the server
- * (past the queue). Turning it on launches the bot if it needs to, the same as {@code pitch40 on}.
+ * {@code pitch40 startWhenConnected <seconds>}: a set time after the bot gets into the server (past the queue), turns
+ * Pitch40 on if it's off and force starts it: launches from the ground, opens the elytra in the air, and starts the
+ * cycle from a glide even below the starting height.
  *
  * <p>Listens whether Pitch40 is on or off, since the module's own events only run while it's on.
  */
@@ -31,24 +32,33 @@ public final class StartOnConnect {
 
     private static void onOnline() {
         int session = SESSION.incrementAndGet();
-        if (!CONFIG.startWhenConnected.enabled || CONFIG.enabled) return;
+        if (!CONFIG.startWhenConnected.enabled) return;
         int delay = Math.max(0, CONFIG.startWhenConnected.delaySeconds);
-        LOG.info("Connected: turning Pitch40 on in {}s", delay);
+        LOG.info("Connected: force starting Pitch40 in {}s", delay);
         EXECUTOR.schedule(() -> startNow(session), delay, TimeUnit.SECONDS);
     }
 
     private static void startNow(int session) {
         try {
-            if (session != SESSION.get() || !CONFIG.startWhenConnected.enabled || CONFIG.enabled) return;
+            if (session != SESSION.get() || !CONFIG.startWhenConnected.enabled) return;
             var proxy = Proxy.getInstance();
             // disconnected (or back in the queue) since
             if (!proxy.isConnected() || proxy.isInQueue()) return;
-            CONFIG.enabled = true;
-            MODULE.get(Pitch40Module.class).syncEnabledFromConfig();
-            saveConfigAsync();
-            LOG.info("Pitch40 turned on {}s after connecting", CONFIG.startWhenConnected.delaySeconds);
+            forceStartPitch40();
+            LOG.info("Pitch40 force started {}s after connecting", CONFIG.startWhenConnected.delaySeconds);
         } catch (Throwable e) {
-            LOG.error("Couldn't turn Pitch40 on after connecting", e);
+            LOG.error("Couldn't start Pitch40 after connecting", e);
         }
+    }
+
+    /** Turns Pitch40 on if it's off, then force starts it. */
+    public static void forceStartPitch40() {
+        var module = MODULE.get(Pitch40Module.class);
+        if (!CONFIG.enabled) {
+            CONFIG.enabled = true;
+            module.syncEnabledFromConfig();
+            saveConfigAsync();
+        }
+        module.forceStart();
     }
 }

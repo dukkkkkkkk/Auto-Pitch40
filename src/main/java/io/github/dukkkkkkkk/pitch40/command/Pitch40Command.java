@@ -12,6 +12,7 @@ import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
 import io.github.dukkkkkkkk.pitch40.module.CoordsModule;
 import io.github.dukkkkkkkk.pitch40.module.Pitch40Module;
 import io.github.dukkkkkkkk.pitch40.util.DiscordStatus;
+import io.github.dukkkkkkkk.pitch40.util.StartOnConnect;
 import io.github.dukkkkkkkk.pitch40.util.Quadrant;
 
 import java.time.Duration;
@@ -103,6 +104,7 @@ public class Pitch40Command extends Command {
                 "regear on/off",
                 "regear now",
                 "regear keepRockets <count>",
+                "start",
                 "startWhenConnected <seconds>/off",
                 "launch on/off",
                 "launch now",
@@ -152,9 +154,18 @@ public class Pitch40Command extends Command {
                     CONFIG.startWhenConnected.delaySeconds = getInteger(c, "seconds");
                     c.getSource().getEmbed()
                         .title("Start When Connected On")
-                        .description("Pitch40 turns on " + CONFIG.startWhenConnected.delaySeconds
-                            + "s after the bot gets into the server (past the queue), and launches if it needs to");
+                        .description(CONFIG.startWhenConnected.delaySeconds
+                            + "s after the bot gets into the server (past the queue), Pitch40 turns on and force starts: "
+                            + "it launches from the ground, opens the elytra in the air, and starts flying from any height");
                 })))
+            .then(literal("start").executes(c -> {
+                StartOnConnect.forceStartPitch40();
+                c.getSource().getEmbed()
+                    .title("Pitch40 Force Started")
+                    .description(Proxy.getInstance().hasActivePlayer()
+                        ? "Starts when you disconnect from the proxy (within 2 minutes)"
+                        : "Launching from the ground, or opening the elytra and starting from any height in the air");
+            }))
             .then(boundsCommand())
             .then(lowerCommand())
             .then(ceilingCommand())
