@@ -285,7 +285,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         boolean waitForElytra = rocketWanted != null && chestSwap.holdingChestplate();
         boolean firingRocket = submitFlightInput(waitForElytra ? null : rocketWanted);
         chestSwap.tick(!firingRocket && !waitForElytra && !boostingWithRocket() && !sinking()
-            && !elytra.busy() && !elytra.needsReplacement(), !rocketMove.isCompleted());
+            && !elytra.busy() && !elytra.needsReplacement() && !launcher.settling(), !rocketMove.isCompleted());
     }
 
     private void checkDimension() {
@@ -609,6 +609,21 @@ public class Pitch40Module extends AbstractInventoryModule {
         AutoLog.disconnectNow(reason);
     }
 
+    /** Dukway has the chestplate on right now. */
+    boolean holdingChestplate() {
+        return chestSwap.holdingChestplate();
+    }
+
+    /**
+     * Gliding at or above where Pitch40 can start without rockets (the upper bound, and at least 40 above the lower
+     * bound), so taking over needs no launch. Dukway's chestplate ticks still count as gliding.
+     */
+    boolean glidingAboveCorridor() {
+        boolean gliding = BOT.isFallFlying() || (flying && ChestSwap.dukwayOn());
+        var corridor = CONFIG.corridor;
+        return gliding && BOT.getY() >= Math.max(corridor.upperBound, corridor.lowerBound + START_MARGIN);
+    }
+
     /** Puts the elytra back on if the dukway chest swap has the chestplate on. */
     void restoreElytra() {
         chestSwap.restoreElytra();
@@ -628,9 +643,9 @@ public class Pitch40Module extends AbstractInventoryModule {
         return null;
     }
 
-    /** Schedule a launch to the upper bound. Runs once the bot is in control. */
+    /** Schedule a launch to the launch height, even from a glide above the upper bound. Runs once the bot is in control. */
     public void launchNow() {
-        launcher.arm(true);
+        launcher.arm(true, true);
     }
 
     // ---- status ----

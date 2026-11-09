@@ -29,6 +29,8 @@ final class Launcher {
     private static final int DEPLOY_TIMEOUT_TICKS = 40;
     private static final int CLIMB_TIMEOUT_TICKS = 20 * 90;
     private static final int NETHER_ROOF_Y = 128;
+    /** Ticks to wait after putting the dukway elytra back, so the server's glide state has caught up. */
+    private static final int SETTLE_TICKS = 10;
 
     private enum Phase { IDLE, WAITING, JUMP, OPEN_ELYTRA, CLIMB }
 
@@ -39,6 +41,9 @@ final class Launcher {
     private int ticksInPhase = 0;
     private int jumpAttempts = 0;
     private boolean jumpHeld = false;
+    /** launch now: climb to the launch height even if already gliding above the upper bound. */
+    private boolean forced = false;
+    private int settleTicks = 0;
 
     Launcher(Pitch40Module module) {
         this.module = module;
@@ -51,6 +56,16 @@ final class Launcher {
 
     /** Schedule a launch, optionally skipping the delay. */
     void arm(boolean immediate) {
+        arm(immediate, false);
+    }
+
+    /**
+     * @param force launch even if already gliding above the upper bound (normally Pitch40 just starts from there)
+     */
+    void arm(boolean immediate, boolean force) {
+        // `launch now` with you logged in, then the takeover re-arms it: keep it forced
+        forced = force || (phase == Phase.WAITING && forced);
+        settleTicks = 0;
         armedAt = Instant.now();
         jumpAttempts = 0;
         ticksInPhase = immediate ? Integer.MAX_VALUE / 2 : 0;
@@ -63,6 +78,14 @@ final class Launcher {
 
     boolean active() {
         return phase != Phase.IDLE;
+    }
+
+    /**
+     * About to launch and putting the dukway elytra back first: chest swaps have to stay off, or the launch
+     * starts with the chestplate on and the elytra can't open and rockets don't boost.
+     */
+    boolean settling() {
+        return phase == Phase.WAITING && settleTicks > 0;
     }
 
     /** Physically taking off or climbing (not just waiting to). */
@@ -108,8 +131,14 @@ final class Launcher {
         }
         if (ticksInPhase < Math.max(0, CONFIG.launch.delaySeconds) * 20) return false;
 
-        if (BOT.getY() >= targetY()) {
-            // already high enough, normal flight takes it from here
+        boolean inAir = !BOT.isOnGround();
+        if (inAir && BOT.getY() >= targetY()) {
+            // already high enough, normal flight takes it from here. Standing on something still takes off
+            phase = Phase.IDLE;
+            return false;
+        }
+        if (inAir && !forced && module.glidingAboveCorridor()) {
+            module.info("Already gliding at Y {}, above the upper bound: starting Pitch40 without a launch", (int) BOT.getY());
             phase = Phase.IDLE;
             return false;
         }
@@ -117,6 +146,16 @@ final class Launcher {
         if (problem != null) {
             module.warn("Not launching: {}", problem);
             phase = Phase.IDLE;
+            return false;
+        }
+        // dukway has the chestplate on most ticks: put the elytra back (the module does it while settling()) and
+        // give the server a moment, so the climb starts gliding with the elytra on
+        if (module.holdingChestplate()) {
+            settleTicks = SETTLE_TICKS;
+            return false;
+        }
+        if (settleTicks > 0) {
+            settleTicks--;
             return false;
         }
         module.info("Launching to Y {}", (int) targetY());

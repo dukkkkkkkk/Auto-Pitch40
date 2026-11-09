@@ -81,8 +81,8 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 regear on/off` | off | When the bot gets down to its second-to-last good elytra (one spare left), it lands with the pathfinder (which finds a safe spot), places the XP shulker next to itself, puts spare rockets in and takes XP out, throws the XP straight down to mend every elytra (they need Mending; ZenithProxy's AutoMend is switched on for it), mines the shulker back up and launches. Needs a shulker with XP bottles in the inventory, and no other shulker of the same colour |
 | `pitch40 regear now` | | Regears straight away |
 | `pitch40 regear keepRockets <count>` | 128 | Rockets to keep when putting spares into the shulker |
-| `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the upper height |
-| `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy) |
+| `pitch40 launch on/off` | on | When the bot takes control (proxy connects, you disconnect, or you turn Pitch40 on) while standing or gliding low, it takes off and rockets up to the launch height. Already gliding above the upper bound, it skips the launch and starts Pitch40 straight away |
+| `pitch40 launch now` | | Launches straight away (or as soon as you disconnect from the proxy), even from a glide above the upper bound |
 | `pitch40 launch height <y>` | upper bound | Height to climb to when taking off or taking over. Set it above the lower bound to give the bot room to sink before it needs rockets (each ~35 blocks is about one rocket). `launch height upper` goes back to the upper bound |
 | `pitch40 launch pitch <degrees>` | 60 | How steeply it climbs while rocketing up (10-90 degrees above level) |
 | `pitch40 launch delay <seconds>` | 5 | Wait after connecting before taking off, so the world has loaded |
