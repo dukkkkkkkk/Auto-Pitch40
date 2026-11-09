@@ -49,7 +49,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | Command | Default | What it does |
 |---|---|---|
 | `pitch40 on/off` | off | Turns it on or off |
-| `pitch40 bounds <lower> <upper>` | 360 420 | Climbs below `lower`, dives above `upper` |
+| `pitch40 bounds <lower> <upper>` | 360 420 | Climbs below `lower`, dives above `upper`. Started well above `upper`, it keeps its height: each dive is only as deep as the gap between the bounds, and climbs run until they top out, so it comes down to the bounds slowly instead of diving straight to `lower` |
 | `pitch40 lower <y>` | 360 | Sets just the lower height |
 | `pitch40 ceiling on/off` | on | Off removes the upper height (see below) |
 | `pitch40 climbGain <blocks>` | 20 | With the ceiling off: each climb aims this far above the best peak so far, and a climb that falls short gets a rocket next time, so it keeps climbing. 0 just holds the best height |

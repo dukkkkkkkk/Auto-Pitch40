@@ -91,6 +91,8 @@ public class Pitch40Module extends AbstractInventoryModule {
     private float pitch = MAX_PITCH;
     /** No ceiling: the Y the current dive started from (the last peak). */
     private double diveFromY = 0.0;
+    /** Where the current climb started. A climb that starts above the upper bound isn't capped by it. */
+    private double climbFromY = Double.NaN;
     private int rocketCooldown = 0;
     /** When the last rocket went off, for the gap between non-emergency rockets. */
     private Instant lastRocketAt = Instant.EPOCH;
@@ -330,6 +332,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         // always start with a dive: it builds the speed the first climb needs
         pitchingDown = true;
         diveFromY = y;
+        climbFromY = Double.NaN;
         pitch = MathHelper.clamp(BOT.getPitch(), -MAX_PITCH, MAX_PITCH);
         cycle.reset();
         turns.reset();
@@ -361,19 +364,28 @@ public class Pitch40Module extends AbstractInventoryModule {
         boolean anticipate = CONFIG.corridor.stayInBounds;
         if (tooLowToWait()) {
             // too far under the band to keep cycling: point up and let the rockets lift it
+            if (pitchingDown) climbFromY = y;
             pitchingDown = false;
         } else if (pitchingDown) {
             // where this dive should bottom out: the lower bound, or with no ceiling diveDepth under the peak.
             // Under the band, a short dive under the peak: enough speed to climb, without sinking the whole cycle
             // ...but never into the too-low zone, where every dive would set off emergency rockets
+            // With a ceiling, a dive is one band deep: from the upper bound that's the lower bound, and from high above
+            // the band it's a normal-sized dive, so it keeps its height instead of dropping all the way to the floor
             double target = diveFromY <= corridor.lowerBound
                 ? Math.max(diveFromY - Math.min(corridor.diveDepth, UNDER_BAND_DIVE), deepUnderY() + TOO_LOW_MARGIN)
                 : corridor.ceiling
-                    ? corridor.lowerBound
+                    ? Math.max(corridor.lowerBound, diveFromY - bandHeight())
                     : Math.max(corridor.lowerBound, diveFromY - corridor.diveDepth);
             turns.diving(target);
-            if (y <= target + (anticipate ? turns.bottomLead() : 0.0)) pitchingDown = false;
-        } else if (corridor.ceiling && y >= corridor.upperBound - (anticipate ? turns.topLead() : 0.0)) {
+            if (y <= target + (anticipate ? turns.bottomLead() : 0.0)) {
+                pitchingDown = false;
+                climbFromY = y;
+            }
+        } else if (corridor.ceiling && !(climbFromY > corridor.upperBound)
+            && y >= corridor.upperBound - (anticipate ? turns.topLead() : 0.0)) {
+            // the ceiling caps climbs from inside the band. Above it, a climb runs until it tops out (below), so the
+            // bot comes down to the band a little each cycle instead of diving straight at it
             startDive(y);
             turns.turnedAtCeiling();
         } else if (cycle.toppedOut()) {
@@ -395,6 +407,11 @@ public class Pitch40Module extends AbstractInventoryModule {
         return corridor.ceiling
             ? (corridor.upperBound - corridor.lowerBound) / 2.0
             : corridor.diveDepth / 2.0;
+    }
+
+    /** The band between the bounds, at least 10 blocks. */
+    private static double bandHeight() {
+        return Math.max(10.0, CONFIG.corridor.upperBound - CONFIG.corridor.lowerBound);
     }
 
     private void startDive(double fromY) {
