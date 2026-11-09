@@ -17,7 +17,11 @@ import com.zenith.util.math.MathHelper;
 import io.github.dukkkkkkkk.pitch40.Pitch40Config.RocketMode;
 import io.github.dukkkkkkkk.pitch40.util.Items;
 import io.github.dukkkkkkkk.pitch40.util.Notice;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.MetadataTypes;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerState;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerCommandPacket;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -644,6 +648,40 @@ public class Pitch40Module extends AbstractInventoryModule {
     /** Puts the elytra back on if the dukway chest swap has the chestplate on. */
     void restoreElytra() {
         chestSwap.restoreElytra();
+    }
+
+    /**
+     * Opens the elytra right now by sending the glide start straight to the server, without waiting for the bot to
+     * be falling or for a fresh jump press. Returns why it can't, or null if it was sent.
+     */
+    public @Nullable String forceOpenElytra() {
+        if (!Proxy.getInstance().isConnected()) return "not connected to the server";
+        if (Proxy.getInstance().hasActivePlayer()) {
+            return "you're logged into the proxy, so you're in control: open it yourself (jump in the air)";
+        }
+        if (BOT.isOnGround()) return "the bot is on the ground; it can only open in the air (try `pitch40 launch now`)";
+        if (chestSwap.holdingChestplate()) {
+            // dukway has the chestplate on: putting the elytra back sends the glide start
+            chestSwap.restoreElytra();
+            return null;
+        }
+        var chest = Items.chest();
+        if (!Items.isElytra(chest)) return "no elytra in the chest slot";
+        if (Items.durabilityLeft(chest) <= 1) return "the elytra in the chest slot is broken";
+        // a glide start while the server already has it gliding closes the elytra instead
+        if (BOT.isFallFlying()) return "it's already gliding";
+        sendClientPacketAsync(new ServerboundPlayerCommandPacket(
+            CACHE.getPlayerCache().getEntityId(), PlayerState.START_ELYTRA_FLYING));
+        // mark it gliding straight away, like a normal open does, so the bot flies it as a glide and doesn't send
+        // another glide start (which would close it) before the server confirms
+        var metadata = CACHE.getPlayerCache().getThePlayer().getMetadata();
+        if (metadata.get(0) instanceof ByteEntityMetadata flags) {
+            flags.setValue((byte) (flags.getPrimitiveValue() | 0x80));
+        } else {
+            metadata.put(0, new ByteEntityMetadata(0, MetadataTypes.BYTE, (byte) 0x80));
+        }
+        info("Force opened the elytra at Y {}", (int) BOT.getY());
+        return null;
     }
 
     /** Start a regear now, or say why it can't. Returns null if it started. */

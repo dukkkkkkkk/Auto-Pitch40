@@ -64,6 +64,7 @@ Type these in the ZenithProxy terminal as shown, in game with `!` or `/` in fron
 | `pitch40 rockets climbsPerRocket <count>` | 1 | Boost only: a rocket every Nth climb |
 | `pitch40 rockets gap <seconds>` | 30 | Least time between rockets, except launches and stalls |
 | `pitch40 rockets lowWarning <count>` | 32 | Warns in Discord when this many rockets or fewer are left, and again when they run out. Out of rockets, it keeps doing Pitch40 and glides down slowly instead of pointing up and stalling |
+| `pitch40 elytra forceOpen` | | Opens the elytra right now by sending the glide start straight to the server, without waiting for the bot to be falling. Works whenever the bot is in control and in the air with an elytra on, even with Pitch40 off |
 | `pitch40 elytra autoDeploy on/off` | on | Reopens the elytra while falling |
 | `pitch40 elytra replace on/off` | on | Swaps in a spare elytra when the worn one runs low |
 | `pitch40 elytra replace durability <n>` | 10 | Durability left at which it's replaced (minimum 2) |

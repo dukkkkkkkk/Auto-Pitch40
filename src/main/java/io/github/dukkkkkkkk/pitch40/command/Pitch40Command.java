@@ -25,6 +25,7 @@ import static com.mojang.brigadier.arguments.IntegerArgumentType.getInteger;
 import static com.mojang.brigadier.arguments.IntegerArgumentType.integer;
 import static com.mojang.brigadier.arguments.StringArgumentType.getString;
 import static com.mojang.brigadier.arguments.StringArgumentType.word;
+import static com.zenith.Globals.BOT;
 import static com.zenith.Globals.MODULE;
 import static com.zenith.command.brigadier.ToggleArgumentType.getToggle;
 import static com.zenith.command.brigadier.ToggleArgumentType.toggle;
@@ -84,6 +85,7 @@ public class Pitch40Command extends Command {
                 "rockets climbsPerRocket <count>",
                 "rockets gap <seconds>",
                 "rockets lowWarning <count>",
+                "elytra forceOpen",
                 "elytra autoDeploy on/off",
                 "elytra replace on/off",
                 "elytra replace durability <durability>",
@@ -367,8 +369,23 @@ public class Pitch40Command extends Command {
             })));
     }
 
+    private static int forceOpen(com.mojang.brigadier.context.CommandContext<CommandContext> c) {
+        String problem = MODULE.get(Pitch40Module.class).forceOpenElytra();
+        if (problem != null) {
+            c.getSource().getEmbed()
+                .title("Can't Open Elytra")
+                .description(problem);
+            return ERROR;
+        }
+        c.getSource().getEmbed()
+            .title("Elytra Opened")
+            .description("Glide start sent at Y " + Math.round(BOT.getY()));
+        return OK;
+    }
+
     private LiteralArgumentBuilder<CommandContext> elytraCommands() {
         return literal("elytra")
+            .then(literal("forceOpen").executes(Pitch40Command::forceOpen))
             .then(literal("autoDeploy").then(argument("toggle", toggle()).executes(c -> {
                 CONFIG.elytra.autoDeploy = getToggle(c, "toggle");
                 c.getSource().getEmbed()
