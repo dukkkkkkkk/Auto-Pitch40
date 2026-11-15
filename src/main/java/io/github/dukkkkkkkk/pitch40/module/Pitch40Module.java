@@ -342,20 +342,17 @@ public class Pitch40Module extends AbstractInventoryModule {
             .build());
     }
 
-    /** @param force start even below the starting height without rockets */
+    /**
+     * Starts the cycle from any glide. Below the lower bound without rockets it can't climb back up, but Pitch40 is
+     * still the slowest way down; gliding with nobody steering stalls and drops fast. Auto log catches it at the bottom.
+     */
     private boolean tryStartFlight(boolean force) {
         if (force) clearForceStart();
-        if (!force && !canStartFlight()) {
-            if (waitingToStart.show()) {
-                int startY = (int) (CONFIG.corridor.ceiling
-                    ? Math.max(CONFIG.corridor.upperBound, CONFIG.corridor.lowerBound + START_MARGIN)
-                    : CONFIG.corridor.lowerBound + START_MARGIN);
-                info("Waiting: glide at or above Y {} to start Pitch40, or carry rockets", startY);
-            }
-            return false;
+        if (!canStartFlight() && waitingToStart.show()) {
+            warn("Starting Pitch40 under the lower bound (Y {}) with no rockets: it can't climb back up, only glide down slowly",
+                (int) CONFIG.corridor.lowerBound);
         }
         flying = true;
-        waitingToStart.clear();
         double y = BOT.getY();
         // always start with a dive: it builds the speed the first climb needs
         pitchingDown = true;
@@ -369,6 +366,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         return true;
     }
 
+    /** High enough to cycle without rockets, or has rockets to climb back up with. */
     private boolean canStartFlight() {
         var corridor = CONFIG.corridor;
         double y = BOT.getY();
@@ -819,7 +817,7 @@ public class Pitch40Module extends AbstractInventoryModule {
         if (!BOT.isFallFlying()) {
             return CONFIG.elytra.autoDeploy ? "in the air, opening the elytra" : "in the air but not gliding (autoDeploy is off)";
         }
-        return "gliding but too low to start: get above Y " + (int) CONFIG.corridor.upperBound + " or carry rockets";
+        return "gliding, starting Pitch40";
     }
 
     // ---- reset ----
